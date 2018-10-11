@@ -22,7 +22,7 @@ bld/
 [Oo]bj/
 [Ll]og/
 bin/
-third_party/boost_1_68_0/stage/
+third_party/boost_1_68_0/
 
 
 # Visual Studio 2015 cache/options directory
