@@ -1,6 +1,17 @@
 #include <iostream>
+#include <thread>
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
+#include <boost/chrono.hpp>
+#include <boost/date_time.hpp>
+#include <chrono>
+
+void timer_expired(std::string id)
+{
+	std::cout << boost::posix_time::second_clock::local_time() << " " << id << " enter." << std::endl;
+	std::this_thread::sleep_for(std::chrono::seconds(3));
+	std::cout << boost::posix_time::second_clock::local_time() << " " << id << " leave." << std::endl;
+}
 
 class printer
 {
@@ -50,9 +61,33 @@ void print(const boost::system::error_code& /*e,
 
 int main(int argc, void** argv)
 {
-	boost::asio::io_context io;
-	printer p(io);
-	io.run();
+	using namespace boost;
 
+	asio::io_service service;
+	asio::io_service::strand strand(service);
+
+	asio::deadline_timer timer1(service, posix_time::seconds(5));
+	asio::deadline_timer timer2(service, posix_time::seconds(5));
+	asio::deadline_timer timer3(service, posix_time::seconds(6));
+
+	timer1.async_wait(
+	strand.wrap([](auto ... vn) { timer_expired("timer1"); })
+	);
+
+	timer2.async_wait(
+	strand.wrap([](auto ... vn) { timer_expired("timer2"); })
+	);
+
+	timer3.async_wait([](auto ... vn) { timer_expired("timer3"); });
+
+	std::thread ta([&]() {service.run(); } );
+	std::thread tb([&]() {service.run(); });
+
+	ta.join();
+	tb.join();
+
+	std::cout << "done." << std::endl;
+
+	std::cin.get();
 	return 0;
 }
