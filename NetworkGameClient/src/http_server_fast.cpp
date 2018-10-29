@@ -28,130 +28,176 @@
 #include <memory>
 #include <string>
 
-namespace ip = boost::asio::ip;         // from <boost/asio.hpp>
-using tcp = boost::asio::ip::tcp;       // from <boost/asio.hpp>
-namespace http = boost::beast::http;    // from <boost/beast/http.hpp>
+#include <boost/lexical_cast.hpp>
 
-// Return a reasonable mime type based on the extension of a file.
-boost::beast::string_view
-mime_type(boost::beast::string_view path)
+//namespace ip = boost::asio::ip;         // from <boost/asio.hpp>
+//using boost::asio::ip::tcp = boost::asio::ip::boost::asio::ip::tcp;       // from <boost/asio.hpp>
+//namespace http = boost::beast::http;    // from <boost/beast/http.hpp>
+
+const std::string GetExtensionFromFilename(const boost::beast::string_view& p_Path)
 {
-	using boost::beast::iequals;
-	auto const ext = [&path]
+	std::string l_result("");
+	if (!p_Path.empty())
 	{
-		auto const pos = path.rfind(".");
-		if (pos == boost::beast::string_view::npos)
-			return boost::beast::string_view{};
-		return path.substr(pos);
-	}();
-	if (iequals(ext, ".htm"))  return "text/html";
-	if (iequals(ext, ".html")) return "text/html";
-	if (iequals(ext, ".php"))  return "text/html";
-	if (iequals(ext, ".css"))  return "text/css";
-	if (iequals(ext, ".txt"))  return "text/plain";
-	if (iequals(ext, ".js"))   return "application/javascript";
-	if (iequals(ext, ".json")) return "application/json";
-	if (iequals(ext, ".xml"))  return "application/xml";
-	if (iequals(ext, ".swf"))  return "application/x-shockwave-flash";
-	if (iequals(ext, ".flv"))  return "video/x-flv";
-	if (iequals(ext, ".png"))  return "image/png";
-	if (iequals(ext, ".jpe"))  return "image/jpeg";
-	if (iequals(ext, ".jpeg")) return "image/jpeg";
-	if (iequals(ext, ".jpg"))  return "image/jpeg";
-	if (iequals(ext, ".gif"))  return "image/gif";
-	if (iequals(ext, ".bmp"))  return "image/bmp";
-	if (iequals(ext, ".ico"))  return "image/vnd.microsoft.icon";
-	if (iequals(ext, ".tiff")) return "image/tiff";
-	if (iequals(ext, ".tif"))  return "image/tiff";
-	if (iequals(ext, ".svg"))  return "image/svg+xml";
-	if (iequals(ext, ".svgz")) return "image/svg+xml";
-	return "application/text";
+		auto l_pos(p_Path.rfind("."));
+		if (l_pos != boost::beast::string_view::npos)
+		{
+			l_result = p_Path.substr(l_pos).to_string();
+		}
+	}
+
+	return l_result;
 }
 
-class http_worker
+// Return a reasonable mime type based on the extension of a file.
+const std::string GetMimeType(const boost::beast::string_view& p_Path)
 {
-public:
-	http_worker(http_worker const&) = delete;
-	http_worker& operator=(http_worker const&) = delete;
+	std::string l_result("application/text");
 
-	http_worker(tcp::acceptor& acceptor, const std::string& doc_root) :
-		acceptor_(acceptor),
-		doc_root_(doc_root)
+	const auto l_ext(GetExtensionFromFilename(p_Path));
+
+
+	using boost::beast::iequals;
+
+	if		(iequals(l_ext, ".html")) l_result = "text/html";
+	else if (iequals(l_ext, ".htm"))  l_result = "text/html";
+	else if (iequals(l_ext, ".cpp"))  l_result = "text/html";
+	else if (iequals(l_ext, ".h"))    l_result = "text/html";
+	else if (iequals(l_ext, ".hpp"))  l_result = "text/html";
+	else if (iequals(l_ext, ".php"))  l_result = "text/html";
+	else if (iequals(l_ext, ".css"))  l_result = "text/css";
+	else if (iequals(l_ext, ".txt"))  l_result = "text/plain";
+	else if (iequals(l_ext, ".js"))   l_result = "application/javascript";
+	else if (iequals(l_ext, ".json")) l_result = "application/json";
+	else if (iequals(l_ext, ".xml"))  l_result = "application/xml";
+	else if (iequals(l_ext, ".swf"))  l_result = "application/x-shockwave-flash";
+	else if (iequals(l_ext, ".flv"))  l_result = "video/x-flv";
+	else if (iequals(l_ext, ".png"))  l_result = "image/png";
+	else if (iequals(l_ext, ".jpe"))  l_result = "image/jpeg";
+	else if (iequals(l_ext, ".jpeg")) l_result = "image/jpeg";
+	else if (iequals(l_ext, ".jpg"))  l_result = "image/jpeg";
+	else if (iequals(l_ext, ".geif")) l_result = "image/gif";
+	else if (iequals(l_ext, ".bmp"))  l_result = "image/bmp";
+	else if (iequals(l_ext, ".ico"))  l_result = "image/vnd.microsoft.icon";
+	else if (iequals(l_ext, ".tiff")) l_result = "image/tiff";
+	else if (iequals(l_ext, ".tif"))  l_result = "image/tif";
+	else if (iequals(l_ext, ".svg"))  l_result = "image/svg+xml";
+	else if (iequals(l_ext, ".svgz")) l_result = "image/svg+xml";
+
+	return l_result;
+}
+
+using alloc_t = fields_alloc<char>;
+//constexpr int MBByte = 1024 * 1024;
+//using request_body_t = boost::beast::http::basic_dynamic_body<boost::beast::flat_static_buffer<MBByte>>;
+using request_body_t = boost::beast::http::string_body;
+
+class HttpWorker;
+using HttpWorkerPtr = std::shared_ptr<HttpWorker>;
+class HttpWorker
+{
+private:
+	HttpWorker() = delete;
+	HttpWorker(const HttpWorker&) = delete;
+	HttpWorker& operator=(const HttpWorker&) = delete;
+
+	HttpWorker(
+		boost::asio::ip::tcp::acceptor& p_Acceptor,
+		const std::string& p_DocumentRoot) 
+		:		
+		m_Acceptor(p_Acceptor),
+		m_DocumentRoot(p_DocumentRoot),
+		m_Socket({ m_Acceptor.get_executor().context() }),
+		m_Alloc(8192),
+		m_RequestDeadline(
+		{
+		m_Acceptor.get_executor().context(),
+		(std::chrono::steady_clock::time_point::max)()
+		})
 	{
 	}
 
-	void start()
+public:
+
+	static HttpWorkerPtr Create(
+		boost::asio::ip::tcp::acceptor& p_Acceptor,
+		const std::string& p_DocumentRoot)
 	{
-		accept();
-		check_deadline();
+		return HttpWorkerPtr(
+			new HttpWorker(
+				p_Acceptor,
+				p_DocumentRoot ));
+	}
+
+	void Start()
+	{
+		Accept();
+		CheckDeadline();
 	}
 
 private:
-	using alloc_t = fields_alloc<char>;
-	//using request_body_t = http::basic_dynamic_body<boost::beast::flat_static_buffer<1024 * 1024>>;
-	using request_body_t = http::string_body;
+	
 
 	// The acceptor used to listen for incoming connections.
-	tcp::acceptor& acceptor_;
+	boost::asio::ip::tcp::acceptor& m_Acceptor;
 
 	// The path to the root of the document directory.
-	std::string doc_root_;
+	std::string m_DocumentRoot;
 
 	// The socket for the currently connected client.
-	tcp::socket socket_{ acceptor_.get_executor().context() };
+	boost::asio::ip::tcp::socket m_Socket;
 
 	// The buffer for performing reads
-	boost::beast::flat_static_buffer<8192> buffer_;
+	boost::beast::flat_static_buffer<8192> m_Buffer;
 
 	// The allocator used for the fields in the request and reply.
-	alloc_t alloc_{ 8192 };
+	alloc_t m_Alloc;
 
 	// The parser for reading the requests
-	boost::optional<http::request_parser<request_body_t, alloc_t>> parser_;
+	boost::optional<boost::beast::http::request_parser<request_body_t, alloc_t>> m_Parser;
 
 	// The timer putting a time limit on requests.
-	boost::asio::basic_waitable_timer<std::chrono::steady_clock> request_deadline_{
-		acceptor_.get_executor().context(), (std::chrono::steady_clock::time_point::max)() };
+	boost::asio::basic_waitable_timer<std::chrono::steady_clock> m_RequestDeadline;
 
 	// The string-based response message.
-	boost::optional<http::response<http::string_body, http::basic_fields<alloc_t>>> string_response_;
+	boost::optional<boost::beast::http::response<boost::beast::http::string_body, boost::beast::http::basic_fields<alloc_t>>> m_StringResponse;
 
 	// The string-based response serializer.
-	boost::optional<http::response_serializer<http::string_body, http::basic_fields<alloc_t>>> string_serializer_;
+	boost::optional<boost::beast::http::response_serializer<boost::beast::http::string_body, boost::beast::http::basic_fields<alloc_t>>> m_StringSerializer;
 
 	// The file-based response message.
-	boost::optional<http::response<http::file_body, http::basic_fields<alloc_t>>> file_response_;
+	boost::optional<boost::beast::http::response<boost::beast::http::file_body, boost::beast::http::basic_fields<alloc_t>>> m_FileResponse;
 
 	// The file-based response serializer.
-	boost::optional<http::response_serializer<http::file_body, http::basic_fields<alloc_t>>> file_serializer_;
+	boost::optional<boost::beast::http::response_serializer<boost::beast::http::file_body, boost::beast::http::basic_fields<alloc_t>>> m_FileSerializer;
 
-	void accept()
+	void Accept()
 	{
 		// Clean up any previous connection.
 		boost::beast::error_code ec;
-		socket_.close(ec);
-		buffer_.consume(buffer_.size());
+		m_Socket.close(ec);
+		m_Buffer.consume(m_Buffer.size());
 
-		acceptor_.async_accept(
-			socket_,
+		m_Acceptor.async_accept(
+			m_Socket,
 			[this](boost::beast::error_code ec)
-		{
-			if (ec)
 			{
-				accept();
-			}
-			else
-			{
-				// Request must be fully processed within 60 seconds.
-				request_deadline_.expires_after(
-					std::chrono::seconds(60));
+				if (ec)
+				{
+					Accept();
+				}
+				else
+				{
+					// Request must be fully processed within 60 seconds.
+					m_RequestDeadline.expires_after(
+						std::chrono::seconds(60));
 
-				read_request();
-			}
-		});
+					ReadRequest();
+				}
+			});
 	}
 
-	void read_request()
+	void ReadRequest()
 	{
 		// On each read the parser needs to be destroyed and
 		// recreated. We store it in a boost::optional to
@@ -164,189 +210,267 @@ private:
 		// We construct the dynamic body with a 1MB limit
 		// to prevent vulnerability to buffer attacks.
 		//
-		parser_.emplace(
+		m_Parser.emplace(
 			std::piecewise_construct,
 			std::make_tuple(),
-			std::make_tuple(alloc_));
+			std::make_tuple(m_Alloc));
 
-		http::async_read(
-			socket_,
-			buffer_,
-			*parser_,
+		boost::beast::http::async_read(
+			m_Socket,
+			m_Buffer,
+			*m_Parser,
 			[this](boost::beast::error_code ec, std::size_t)
-		{
-			if (ec)
-				accept();
-			else
-				process_request(parser_->get());
-		});
+			{
+				if (ec)
+				{
+					Accept();
+				}
+				else
+				{
+					ProcessRequest(m_Parser->get());
+				}
+			});
 	}
 
-	void process_request(http::request<request_body_t, http::basic_fields<alloc_t>> const& req)
+	void ProcessRequest(
+		const boost::beast::http::request<request_body_t, boost::beast::http::basic_fields<alloc_t>> & p_Request)
 	{
-		switch (req.method())
+		switch (p_Request.method())
 		{
-		case http::verb::get:
-			send_file(req.target());
-			break;
+			case boost::beast::http::verb::get:
+				SendFile(p_Request.target());
+				break;
 
-		default:
-			// We return responses indicating an error if
-			// we do not recognize the request method.
-			send_bad_response(
-				http::status::bad_request,
-				"Invalid request-method '" + req.method_string().to_string() + "'\r\n");
-			break;
-		}
+			default:
+				// We return responses indicating an error if
+				// we do not recognize the request method.
+				SendBadResponse(
+					boost::beast::http::status::bad_request,
+					"Invalid request-method '" + p_Request.method_string().to_string() + "'\r\n");
+				break;
+			}
 	}
 
-	void send_bad_response(
-		http::status status,
-		std::string const& error)
+	void SendBadResponse(
+		const boost::beast::http::status& p_Status,
+		std::string const& p_Error)
 	{
-		string_response_.emplace(
+		m_StringResponse.emplace(
 			std::piecewise_construct,
 			std::make_tuple(),
-			std::make_tuple(alloc_));
+			std::make_tuple(m_Alloc));
 
-		string_response_->result(status);
-		string_response_->keep_alive(false);
-		string_response_->set(http::field::server, "Beast");
-		string_response_->set(http::field::content_type, "text/plain");
-		string_response_->body() = error;
-		string_response_->prepare_payload();
+		m_StringResponse->result(p_Status);
+		m_StringResponse->keep_alive(false);
+		m_StringResponse->set(boost::beast::http::field::server, "Beast");
+		m_StringResponse->set(boost::beast::http::field::content_type, "text/plain");
+		m_StringResponse->body() = p_Error;
+		m_StringResponse->prepare_payload();
 
-		string_serializer_.emplace(*string_response_);
+		m_StringSerializer.emplace(*m_StringResponse);
 
-		http::async_write(
-			socket_,
-			*string_serializer_,
+		boost::beast::http::async_write(
+			m_Socket,
+			*m_StringSerializer,
 			[this](boost::beast::error_code ec, std::size_t)
-		{
-			socket_.shutdown(tcp::socket::shutdown_send, ec);
-			string_serializer_.reset();
-			string_response_.reset();
-			accept();
-		});
+			{
+				m_Socket.shutdown(boost::asio::ip::tcp::socket::shutdown_send, ec);
+				m_StringSerializer.reset();
+				m_StringResponse.reset();
+				Accept();
+			});
 	}
 
-	void send_file(boost::beast::string_view target)
+	void SendBadFileResponse()
+	{
+		SendBadResponse(
+			boost::beast::http::status::not_found,
+			"File not found\r\n");
+	}
+
+	void SendFile(const boost::beast::string_view& p_Target)
 	{
 		// Request path must be absolute and not contain "..".
-		if (target.empty() || target[0] != '/' || target.find("..") != std::string::npos)
+		if (p_Target.empty() || 
+		p_Target[0] != '/' ||
+		p_Target.find("..") != std::string::npos)
 		{
-			send_bad_response(
-				http::status::not_found,
-				"File not found\r\n");
-			return;
+			SendBadFileResponse();
 		}
-
-		std::string full_path = doc_root_;
-		full_path.append(
-			target.data(),
-			target.size());
-
-		http::file_body::value_type file;
-		boost::beast::error_code ec;
-		file.open(
-			full_path.c_str(),
-			boost::beast::file_mode::read,
-			ec);
-		if (ec)
+		else
 		{
-			send_bad_response(
-				http::status::not_found,
-				"File not found\r\n");
-			return;
+			std::string l_FullPath(m_DocumentRoot);
+			l_FullPath.append(
+				p_Target.data(),
+				p_Target.size());
+
+			boost::beast::error_code l_ec;
+			boost::beast::http::file_body::value_type l_File;
+			l_File.open(
+				l_FullPath.c_str(),
+				boost::beast::file_mode::read,
+				l_ec);
+
+			if (l_ec)
+			{
+				SendBadFileResponse();
+			}
+			else
+			{
+				m_FileResponse.emplace(
+					std::piecewise_construct,
+					std::make_tuple(),
+					std::make_tuple(m_Alloc));
+
+				m_FileResponse->result(boost::beast::http::status::ok);
+				m_FileResponse->keep_alive(false);
+				m_FileResponse->set(boost::beast::http::field::server, "Beast");
+				m_FileResponse->set(boost::beast::http::field::content_type, GetMimeType(p_Target));
+				m_FileResponse->body() = std::move(l_File);
+				m_FileResponse->prepare_payload();
+
+				m_FileSerializer.emplace(*m_FileResponse);
+
+				boost::beast::http::async_write(
+					m_Socket,
+					*m_FileSerializer,
+					[this](boost::beast::error_code ec, std::size_t)
+					{
+						m_Socket.shutdown(boost::asio::ip::tcp::socket::shutdown_send, ec);
+						m_FileSerializer.reset();
+						m_FileResponse.reset();
+						Accept();
+					});
+			}
 		}
-
-		file_response_.emplace(
-			std::piecewise_construct,
-			std::make_tuple(),
-			std::make_tuple(alloc_));
-
-		file_response_->result(http::status::ok);
-		file_response_->keep_alive(false);
-		file_response_->set(http::field::server, "Beast");
-		file_response_->set(http::field::content_type, mime_type(target.to_string()));
-		file_response_->body() = std::move(file);
-		file_response_->prepare_payload();
-
-		file_serializer_.emplace(*file_response_);
-
-		http::async_write(
-			socket_,
-			*file_serializer_,
-			[this](boost::beast::error_code ec, std::size_t)
-		{
-			socket_.shutdown(tcp::socket::shutdown_send, ec);
-			file_serializer_.reset();
-			file_response_.reset();
-			accept();
-		});
 	}
 
-	void check_deadline()
+	void CheckDeadline()
 	{
 		// The deadline may have moved, so check it has really passed.
-		if (request_deadline_.expiry() <= std::chrono::steady_clock::now())
+		if (m_RequestDeadline.expiry() <= std::chrono::steady_clock::now())
 		{
 			// Close socket to cancel any outstanding operation.
 			boost::beast::error_code ec;
-			socket_.close();
+			m_Socket.close();
 
 			// Sleep indefinitely until we're given a new deadline.
-			request_deadline_.expires_at(
+			m_RequestDeadline.expires_at(
 				std::chrono::steady_clock::time_point::max());
 		}
 
-		request_deadline_.async_wait(
+		m_RequestDeadline.async_wait(
 			[this](boost::beast::error_code)
-		{
-			check_deadline();
-		});
+			{
+				CheckDeadline();
+			});
 	}
 };
 
-int main(int argc, char* argv[])
+void PrintHelp()
+{
+	std::cout << "Usage: http_server_fast <address> <port> <doc_root> <num_workers> {spin|block}\n";
+	std::cout << "  For IPv4, try:\n";
+	std::cout << "    http_server_fast 0.0.0.0 80 . 100 block\n";
+	std::cout << "  For IPv6, try:\n";
+	std::cout << "    http_server_fast 0::0 80 . 100 block\n";
+}
+
+struct ServerStartDetails
+{
+	const boost::asio::ip::address  Address;
+	const unsigned short			Port;
+	const std::string				DocumentRoot;
+	const int						NumberOfWorkers;
+	const bool						Spin;
+
+	ServerStartDetails(char* p_Arguments[])
+		: Address(boost::asio::ip::make_address(p_Arguments[1])),
+		Port(boost::lexical_cast<unsigned short>(p_Arguments[2])),
+		DocumentRoot((p_Arguments[3])),
+		NumberOfWorkers(boost::lexical_cast<int>(p_Arguments[4])),
+		Spin(std::strcmp(p_Arguments[5], "spin") == 0)
+	{
+
+	}
+};
+
+int main(int p_argc, char* p_argv[])
 {
 	try
 	{
 		// Check command line arguments.
-		if (argc != 6)
+		if (p_argc != 6)
 		{
-			std::cerr << "Usage: http_server_fast <address> <port> <doc_root> <num_workers> {spin|block}\n";
-			std::cerr << "  For IPv4, try:\n";
-			std::cerr << "    http_server_fast 0.0.0.0 80 . 100 block\n";
-			std::cerr << "  For IPv6, try:\n";
-			std::cerr << "    http_server_fast 0::0 80 . 100 block\n";
-			return EXIT_FAILURE;
+			PrintHelp();
+		}
+		else 
+		{
+			try
+			{
+				ServerStartDetails l_SSD(p_argv);
+
+				boost::asio::io_context l_IOContext{ 1 };
+
+				boost::asio::ip::tcp::acceptor l_Acceptor
+				{ 
+					l_IOContext, 
+					{
+						l_SSD.Address, 
+						l_SSD.Port
+					}
+				};
+
+				std::list<HttpWorkerPtr> l_Workers;
+				for (int i (0); i < l_SSD.NumberOfWorkers; ++i)
+				{
+					try
+					{
+						auto l_Candidate(
+							HttpWorker::Create(l_Acceptor,  l_SSD.DocumentRoot));
+
+						try
+						{
+							l_Candidate->Start();
+							l_Workers.push_back(l_Candidate);
+						}
+						catch (const std::exception&)
+						{
+							std::cerr << "Error Starting Worker" << std::endl;
+						}
+
+					}
+					catch (const std::bad_alloc&)
+					{
+						std::cerr << "Out of Memory for Workers" << std::endl;
+						break;
+					}
+				}
+
+				if (l_SSD.Spin)
+				{
+					do
+					{
+						l_IOContext.poll();
+					}
+					while(true);
+				}
+
+				else
+				{
+					l_IOContext.run();
+				}
+			}
+			catch (const boost::bad_lexical_cast& l_blc)
+			{
+				std::cerr << "Error parsing server start port or number of workers[:" << l_blc.what() << "]" << std::endl;
+			}
+	
 		}
 
-		auto const address = boost::asio::ip::make_address(argv[1]);
-		unsigned short port = static_cast<unsigned short>(std::atoi(argv[2]));
-		std::string doc_root = argv[3];
-		int num_workers = std::atoi(argv[4]);
-		bool spin = (std::strcmp(argv[5], "spin") == 0);
-
-		boost::asio::io_context ioc{ 1 };
-		tcp::acceptor acceptor{ ioc, {address, port} };
-
-		std::list<http_worker> workers;
-		for (int i = 0; i < num_workers; ++i)
-		{
-			workers.emplace_back(acceptor, doc_root);
-			workers.back().start();
-		}
-
-		if (spin)
-			for (;;) ioc.poll();
-		else
-			ioc.run();
 	}
-	catch (const std::exception& e)
+	catch (const std::exception& l_ex)
 	{
-		std::cerr << "Error: " << e.what() << std::endl;
-		return EXIT_FAILURE;
+		std::cerr << "Error: " << l_ex.what() << std::endl;
 	}
 }
