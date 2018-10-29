@@ -4,6 +4,7 @@
 #include <boost/bind.hpp>
 #include <boost/chrono.hpp>
 #include <boost/date_time.hpp>
+#include <boost/beast/core.hpp>
 #include <chrono>
 
 void timer_expired(std::string id)
