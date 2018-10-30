@@ -5,6 +5,8 @@ VisualStudioVersion = 15.0.28010.2019
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NetworkGameClient", "NetworkGameClient\NetworkGameClient.vcxproj", "{DC3BD184-677F-4D90-B5CD-CF11D62C657E}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NetworkGameServer", "NetworkGameServer\NetworkGameServer.vcxproj", "{A5A04061-8AF1-4168-8535-1BB6B90D2926}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -21,6 +23,14 @@ Global
 		{DC3BD184-677F-4D90-B5CD-CF11D62C657E}.Release|x64.Build.0 = Release|x64
 		{DC3BD184-677F-4D90-B5CD-CF11D62C657E}.Release|x86.ActiveCfg = Release|Win32
 		{DC3BD184-677F-4D90-B5CD-CF11D62C657E}.Release|x86.Build.0 = Release|Win32
+		{A5A04061-8AF1-4168-8535-1BB6B90D2926}.Debug|x64.ActiveCfg = Debug|x64
+		{A5A04061-8AF1-4168-8535-1BB6B90D2926}.Debug|x64.Build.0 = Debug|x64
+		{A5A04061-8AF1-4168-8535-1BB6B90D2926}.Debug|x86.ActiveCfg = Debug|Win32
+		{A5A04061-8AF1-4168-8535-1BB6B90D2926}.Debug|x86.Build.0 = Debug|Win32
+		{A5A04061-8AF1-4168-8535-1BB6B90D2926}.Release|x64.ActiveCfg = Release|x64
+		{A5A04061-8AF1-4168-8535-1BB6B90D2926}.Release|x64.Build.0 = Release|x64
+		{A5A04061-8AF1-4168-8535-1BB6B90D2926}.Release|x86.ActiveCfg = Release|Win32
+		{A5A04061-8AF1-4168-8535-1BB6B90D2926}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
