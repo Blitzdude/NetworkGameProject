@@ -29,95 +29,98 @@
 #include <thread>
 #include <vector>
 
-using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
-namespace http = boost::beast::http;    // from <boost/beast/http.hpp>
+//using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
+//namespace http = boost::beast::http;    // from <boost/beast/http.hpp>
 
 // Return a reasonable mime type based on the extension of a file.
-boost::beast::string_view
-mime_type(boost::beast::string_view path)
+boost::beast::string_view GetMimeType(boost::beast::string_view p_path)
 {
 	using boost::beast::iequals;
-	auto const ext = [&path]
+	auto const cl_ext = [&p_path]
 	{
-		auto const pos = path.rfind(".");
+		auto const pos = p_path.rfind(".");
 		if (pos == boost::beast::string_view::npos)
+		{
 			return boost::beast::string_view{};
-		return path.substr(pos);
+		}
+		return p_path.substr(pos);
 	}();
-	if (iequals(ext, ".htm"))  return "text/html";
-	if (iequals(ext, ".html")) return "text/html";
-	if (iequals(ext, ".php"))  return "text/html";
-	if (iequals(ext, ".css"))  return "text/css";
-	if (iequals(ext, ".txt"))  return "text/plain";
-	if (iequals(ext, ".js"))   return "application/javascript";
-	if (iequals(ext, ".json")) return "application/json";
-	if (iequals(ext, ".xml"))  return "application/xml";
-	if (iequals(ext, ".swf"))  return "application/x-shockwave-flash";
-	if (iequals(ext, ".flv"))  return "video/x-flv";
-	if (iequals(ext, ".png"))  return "image/png";
-	if (iequals(ext, ".jpe"))  return "image/jpeg";
-	if (iequals(ext, ".jpeg")) return "image/jpeg";
-	if (iequals(ext, ".jpg"))  return "image/jpeg";
-	if (iequals(ext, ".gif"))  return "image/gif";
-	if (iequals(ext, ".bmp"))  return "image/bmp";
-	if (iequals(ext, ".ico"))  return "image/vnd.microsoft.icon";
-	if (iequals(ext, ".tiff")) return "image/tiff";
-	if (iequals(ext, ".tif"))  return "image/tiff";
-	if (iequals(ext, ".svg"))  return "image/svg+xml";
-	if (iequals(ext, ".svgz")) return "image/svg+xml";
+	if (iequals(cl_ext, ".htm"))  return "text/html";
+	if (iequals(cl_ext, ".html")) return "text/html";
+	if (iequals(cl_ext, ".php"))  return "text/html";
+	if (iequals(cl_ext, ".css"))  return "text/css";
+	if (iequals(cl_ext, ".txt"))  return "text/plain";
+	if (iequals(cl_ext, ".js"))   return "application/javascript";
+	if (iequals(cl_ext, ".json")) return "application/json";
+	if (iequals(cl_ext, ".xml"))  return "application/xml";
+	if (iequals(cl_ext, ".swf"))  return "application/x-shockwave-flash";
+	if (iequals(cl_ext, ".flv"))  return "video/x-flv";
+	if (iequals(cl_ext, ".png"))  return "image/png";
+	if (iequals(cl_ext, ".jpe"))  return "image/jpeg";
+	if (iequals(cl_ext, ".jpeg")) return "image/jpeg";
+	if (iequals(cl_ext, ".jpg"))  return "image/jpeg";
+	if (iequals(cl_ext, ".gif"))  return "image/gif";
+	if (iequals(cl_ext, ".bmp"))  return "image/bmp";
+	if (iequals(cl_ext, ".ico"))  return "image/vnd.microsoft.icon";
+	if (iequals(cl_ext, ".tiff")) return "image/tiff";
+	if (iequals(cl_ext, ".tif"))  return "image/tiff";
+	if (iequals(cl_ext, ".svg"))  return "image/svg+xml";
+	if (iequals(cl_ext, ".svgz")) return "image/svg+xml";
 	return "application/text";
 }
 
 // Append an HTTP rel-path to a local filesystem path.
 // The returned path is normalized for the platform.
-std::string
-path_cat(
-	boost::beast::string_view base,
-	boost::beast::string_view path)
+std::string path_cat(boost::beast::string_view p_base,
+	boost::beast::string_view p_path)
 {
-	if (base.empty())
-		return path.to_string();
-	std::string result = base.to_string();
+	if (p_base.empty())
+		return p_path.to_string();
+	std::string l_result = p_base.to_string();
 #if BOOST_MSVC
 	char constexpr path_separator = '\\';
-	if (result.back() == path_separator)
-		result.resize(result.size() - 1);
-	result.append(path.data(), path.size());
-	for (auto& c : result)
+	if (l_result.back() == path_separator)
+	{
+		l_result.resize(l_result.size() - 1);
+	}
+	l_result.append(p_path.data(), p_path.size());
+
+	for (auto& c : l_result)
+	{
 		if (c == '/')
+		{
 			c = path_separator;
+		}
+	}
 #else
 	char constexpr path_separator = '/';
 	if (result.back() == path_separator)
 		result.resize(result.size() - 1);
 	result.append(path.data(), path.size());
 #endif
-	return result;
+	return l_result;
 }
 
 // This function produces an HTTP response for the given
 // request. The type of the response object depends on the
 // contents of the request, so the interface requires the
 // caller to pass a generic lambda for receiving the response.
-template<
-	class Body, class Allocator,
-	class Send>
-	void
-	handle_request(
+template< class Body, class Allocator, class Send>
+void HandleRequest(
 		boost::beast::string_view doc_root,
-		http::request<Body, http::basic_fields<Allocator>>&& req,
+		boost::beast::http::request<Body, boost::beast::http::basic_fields<Allocator>>&& p_req,
 		Send&& send)
 {
 	// Returns a bad request response
-	auto const bad_request =
-		[&req](boost::beast::string_view why)
+	auto const l_badRequest =
+		[&p_req](boost::beast::string_view p_why)
 	{
-		http::response<http::string_body> res{ http::status::bad_request, req.version() };
-		res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
-		res.set(http::field::content_type, "text/html");
-		res.keep_alive(req.keep_alive());
-		res.body() = why.to_string();
-		res.prepare_payload();
+		boost::beast::http::response<boost::beast::http::string_body> l_res{ boost::beast::http::status::bad_request, p_req.version() };
+		l_res.set(boost::beast::http::field::server, BOOST_BEAST_VERSION_STRING);
+		l_res.set(boost::beast::http::field::content_type, "text/html");
+		l_res.keep_alive(p_req.keep_alive());
+		l_res.body() = p_why.to_string();
+		l_res.prepare_payload();
 		return res;
 	};
 
@@ -125,9 +128,9 @@ template<
 	auto const not_found =
 		[&req](boost::beast::string_view target)
 	{
-		http::response<http::string_body> res{ http::status::not_found, req.version() };
-		res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
-		res.set(http::field::content_type, "text/html");
+		boost::beast::http::response<boost::beast::http::string_body> res{ boost::beast::http::status::not_found, req.version() };
+		res.set(boost::beast::http::field::server, BOOST_BEAST_VERSION_STRING);
+		res.set(boost::beast::http::field::content_type, "text/html");
 		res.keep_alive(req.keep_alive());
 		res.body() = "The resource '" + target.to_string() + "' was not found.";
 		res.prepare_payload();
@@ -138,9 +141,9 @@ template<
 	auto const server_error =
 		[&req](boost::beast::string_view what)
 	{
-		http::response<http::string_body> res{ http::status::internal_server_error, req.version() };
-		res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
-		res.set(http::field::content_type, "text/html");
+		boost::beast::http::response<boost::beast::http::string_body> res{ boost::beast::http::status::internal_server_error, req.version() };
+		res.set(boost::beast::http::field::server, BOOST_BEAST_VERSION_STRING);
+		res.set(boost::beast::http::field::content_type, "text/html");
 		res.keep_alive(req.keep_alive());
 		res.body() = "An error occurred: '" + what.to_string() + "'";
 		res.prepare_payload();
@@ -148,8 +151,8 @@ template<
 	};
 
 	// Make sure we can handle the method
-	if (req.method() != http::verb::get &&
-		req.method() != http::verb::head)
+	if (req.method() != boost::beast::http::verb::get &&
+		req.method() != boost::beast::http::verb::head)
 		return send(bad_request("Unknown HTTP-method"));
 
 	// Request path must be absolute and not contain "..".
@@ -165,7 +168,7 @@ template<
 
 	// Attempt to open the file
 	boost::beast::error_code ec;
-	http::file_body::value_type body;
+	boost::beast::http::file_body::value_type body;
 	body.open(path.c_str(), boost::beast::file_mode::scan, ec);
 
 	// Handle the case where the file doesn't exist
@@ -180,23 +183,23 @@ template<
 	auto const size = body.size();
 
 	// Respond to HEAD request
-	if (req.method() == http::verb::head)
+	if (req.method() == boost::beast::http::verb::head)
 	{
-		http::response<http::empty_body> res{ http::status::ok, req.version() };
-		res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
-		res.set(http::field::content_type, mime_type(path));
+		boost::beast::http::response<boost::beast::http::empty_body> res{ boost::beast::http::status::ok, req.version() };
+		res.set(boost::beast::http::field::server, BOOST_BEAST_VERSION_STRING);
+		res.set(boost::beast::http::field::content_type, GetMimeType(path));
 		res.content_length(size);
 		res.keep_alive(req.keep_alive());
 		return send(std::move(res));
 	}
 
 	// Respond to GET request
-	http::response<http::file_body> res{
+	boost::beast::http::response<boost::beast::http::file_body> res{
 		std::piecewise_construct,
 		std::make_tuple(std::move(body)),
-		std::make_tuple(http::status::ok, req.version()) };
-	res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
-	res.set(http::field::content_type, mime_type(path));
+		std::make_tuple(boost::beast::http::status::ok, req.version()) };
+	res.set(boost::beast::http::field::server, BOOST_BEAST_VERSION_STRING);
+	res.set(boost::beast::http::field::content_type, GetMimeType(path));
 	res.content_length(size);
 	res.keep_alive(req.keep_alive());
 	return send(std::move(res));
@@ -228,20 +231,20 @@ class session : public std::enable_shared_from_this<session>
 
 		template<bool isRequest, class Body, class Fields>
 		void
-			operator()(http::message<isRequest, Body, Fields>&& msg) const
+			operator()(boost::beast::http::message<isRequest, Body, Fields>&& msg) const
 		{
 			// The lifetime of the message has to extend
 			// for the duration of the async operation so
 			// we use a shared_ptr to manage it.
 			auto sp = std::make_shared<
-				http::message<isRequest, Body, Fields>>(std::move(msg));
+				boost::beast::http::message<isRequest, Body, Fields>>(std::move(msg));
 
 			// Store a type-erased version of the shared
 			// pointer in the class to keep it alive.
 			self_.res_ = sp;
 
 			// Write the response
-			http::async_write(
+			boost::beast::http::async_write(
 				self_.socket_,
 				*sp,
 				boost::asio::bind_executor(
@@ -255,20 +258,19 @@ class session : public std::enable_shared_from_this<session>
 		}
 	};
 
-	tcp::socket socket_;
+	boost::asio::ip::tcp::socket socket_;
 	boost::asio::strand<
 		boost::asio::io_context::executor_type> strand_;
 	boost::beast::flat_buffer buffer_;
 	std::shared_ptr<std::string const> doc_root_;
-	http::request<http::string_body> req_;
+	boost::beast::http::request<boost::beast::http::string_body> req_;
 	std::shared_ptr<void> res_;
 	send_lambda lambda_;
 
 public:
 	// Take ownership of the socket
-	explicit
-		session(
-			tcp::socket socket,
+	explicit session(
+			boost::asio::ip::tcp::socket socket,
 			std::shared_ptr<std::string const> const& doc_root)
 		: socket_(std::move(socket))
 		, strand_(socket_.get_executor())
@@ -278,46 +280,43 @@ public:
 	}
 
 	// Start the asynchronous operation
-	void
-		run()
+	void Run()
 	{
-		do_read();
+		DoRead();
 	}
 
-	void
-		do_read()
+	void DoRead()
 	{
 		// Make the request empty before reading,
 		// otherwise the operation behavior is undefined.
 		req_ = {};
 
 		// Read a request
-		http::async_read(socket_, buffer_, req_,
+		boost::beast::http::async_read(socket_, buffer_, req_,
 			boost::asio::bind_executor(
 				strand_,
 				std::bind(
-					&session::on_read,
+					&session::OnRead,
 					shared_from_this(),
 					std::placeholders::_1,
 					std::placeholders::_2)));
 	}
 
-	void
-		on_read(
+	void OnRead(
 			boost::system::error_code ec,
 			std::size_t bytes_transferred)
 	{
 		boost::ignore_unused(bytes_transferred);
 
 		// This means they closed the connection
-		if (ec == http::error::end_of_stream)
+		if (ec == boost::beast::http::error::end_of_stream)
 			return do_close();
 
 		if (ec)
 			return fail(ec, "read");
 
 		// Send the response
-		handle_request(*doc_root_, std::move(req_), lambda_);
+		HandleRequest(*doc_root_, std::move(req_), lambda_);
 	}
 
 	void
@@ -342,7 +341,7 @@ public:
 		res_ = nullptr;
 
 		// Read another request
-		do_read();
+		DoRead();
 	}
 
 	void
@@ -350,7 +349,7 @@ public:
 	{
 		// Send a TCP shutdown
 		boost::system::error_code ec;
-		socket_.shutdown(tcp::socket::shutdown_send, ec);
+		socket_.shutdown(boost::asio::ip::tcp::socket::shutdown_send, ec);
 
 		// At this point the connection is closed gracefully
 	}
@@ -361,14 +360,14 @@ public:
 // Accepts incoming connections and launches the sessions
 class listener : public std::enable_shared_from_this<listener>
 {
-	tcp::acceptor acceptor_;
-	tcp::socket socket_;
+	boost::asio::ip::tcp::acceptor acceptor_;
+	boost::asio::ip::tcp::socket socket_;
 	std::shared_ptr<std::string const> doc_root_;
 
 public:
 	listener(
 		boost::asio::io_context& ioc,
-		tcp::endpoint endpoint,
+		boost::asio::ip::tcp::endpoint endpoint,
 		std::shared_ptr<std::string const> const& doc_root)
 		: acceptor_(ioc)
 		, socket_(ioc)
@@ -412,7 +411,7 @@ public:
 
 	// Start accepting incoming connections
 	void
-		run()
+		Run()
 	{
 		if (!acceptor_.is_open())
 			return;
@@ -442,7 +441,7 @@ public:
 			// Create the session and run it
 			std::make_shared<session>(
 				std::move(socket_),
-				doc_root_)->run();
+				doc_root_)->Run();
 		}
 
 		// Accept another connection
@@ -469,22 +468,22 @@ int main(int argc, char* argv[])
 	auto const threads = std::max<int>(1, std::atoi(argv[4]));
 
 	// The io_context is required for all I/O
-	boost::asio::io_context ioc{ threads };
+	boost::asio::io_context l_IOContext{ threads };
 
 	// Create and launch a listening port
 	std::make_shared<listener>(
-		ioc,
-		tcp::endpoint{ address, port },
-		doc_root)->run();
+		l_IOContext,
+		boost::asio::ip::tcp::endpoint{ address, port },
+		doc_root)->Run();
 
 	// Run the I/O service on the requested number of threads
 	std::vector<std::thread> v;
 	v.reserve(threads - 1);
 	for (auto i = threads - 1; i > 0; --i)
 	{
-		v.emplace_back([&ioc] { ioc.run(); });
+		v.emplace_back([&l_IOContext] { l_IOContext.run(); });
 	}
-	ioc.run();
+	l_IOContext.run();
 
 	return EXIT_SUCCESS;
 }

@@ -24,134 +24,135 @@
 #include <memory>
 #include <string>
 
-using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
-namespace http = boost::beast::http;    // from <boost/beast/http.hpp>
+//using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
+//namespace http = boost::beast::http;    // from <boost/beast/http.hpp>
 
 //------------------------------------------------------------------------------
 
 // Report a failure
-void
-fail(boost::system::error_code ec, char const* what)
+void Fail(boost::system::error_code p_ec, const char* p_what)
 {
-	std::cerr << what << ": " << ec.message() << "\n";
+	std::cerr << p_what << ": " << p_ec.message() << "\n";
 }
 
 // Performs an HTTP GET and prints the response
-class session : public std::enable_shared_from_this<session>
+class Session : public std::enable_shared_from_this<Session>
 {
-	tcp::resolver resolver_;
-	tcp::socket socket_;
-	boost::beast::flat_buffer buffer_; // (Must persist between reads)
-	http::request<http::empty_body> req_;
-	http::response<http::string_body> res_;
+	boost::asio::ip::tcp::resolver m_resolver;
+	boost::asio::ip::tcp::socket m_socket;
+	boost::beast::flat_buffer m_buffer; // (Must persist between reads)
+	boost::beast::http::request<boost::beast::http::empty_body> m_req;
+	boost::beast::http::response<boost::beast::http::string_body> m_res;
 
 public:
 	// Resolver and socket require an io_context
-	explicit
-		session(boost::asio::io_context& ioc)
-		: resolver_(ioc)
-		, socket_(ioc)
+	explicit Session(boost::asio::io_context& ioc)
+		: m_resolver(ioc)
+		, m_socket(ioc)
 	{
 	}
 
 	// Start the asynchronous operation
-	void
-		run(
-			char const* host,
+	void Run(char const* host,
 			char const* port,
 			char const* target,
 			int version)
 	{
 		// Set up an HTTP GET request message
-		req_.version(version);
-		req_.method(http::verb::get);
-		req_.target(target);
-		req_.set(http::field::host, host);
-		req_.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
+		m_req.version(version);
+		m_req.method(boost::beast::http::verb::get);
+		m_req.target(target);
+		m_req.set(boost::beast::http::field::host, host);
+		m_req.set(boost::beast::http::field::user_agent, BOOST_BEAST_VERSION_STRING);
 
 		// Look up the domain name
-		resolver_.async_resolve(
+		m_resolver.async_resolve(
 			host,
 			port,
 			std::bind(
-				&session::on_resolve,
+				&Session::OnResolve,
 				shared_from_this(),
 				std::placeholders::_1,
 				std::placeholders::_2));
 	}
 
-	void
-		on_resolve(
-			boost::system::error_code ec,
-			tcp::resolver::results_type results)
+	void OnResolve(boost::system::error_code p_ec,
+			boost::asio::ip::tcp::resolver::results_type p_results)
 	{
-		if (ec)
-			return fail(ec, "resolve");
+		if (p_ec)
+		{
+			return Fail(p_ec, "resolve");
+		}
 
 		// Make the connection on the IP address we get from a lookup
 		boost::asio::async_connect(
-			socket_,
-			results.begin(),
-			results.end(),
+			m_socket,
+			p_results.begin(),
+			p_results.end(),
 			std::bind(
-				&session::on_connect,
+				&Session::OnConnect,
 				shared_from_this(),
 				std::placeholders::_1));
 	}
 
-	void
-		on_connect(boost::system::error_code ec)
+	void OnConnect(boost::system::error_code p_ec)
 	{
-		if (ec)
-			return fail(ec, "connect");
+		if (p_ec)
+		{
+			return Fail(p_ec, "connect");
+		}
 
 		// Send the HTTP request to the remote host
-		http::async_write(socket_, req_,
+		boost::beast::http::async_write(m_socket, m_req,
 			std::bind(
-				&session::on_write,
+				&Session::OnWrite,
 				shared_from_this(),
 				std::placeholders::_1,
 				std::placeholders::_2));
 	}
 
-	void
-		on_write(
-			boost::system::error_code ec,
-			std::size_t bytes_transferred)
+	void OnWrite(boost::system::error_code p_ec,
+			std::size_t p_bytes_transferred)
 	{
-		boost::ignore_unused(bytes_transferred);
+		boost::ignore_unused(p_bytes_transferred);
 
-		if (ec)
-			return fail(ec, "write");
+		if (p_ec)
+		{
+			return Fail(p_ec, "write");
+		}
 
 		// Receive the HTTP response
-		http::async_read(socket_, buffer_, res_,
+		boost::beast::http::async_read(m_socket, m_buffer, m_res,
 			std::bind(
-				&session::on_read,
+				&Session::OnRead,
 				shared_from_this(),
 				std::placeholders::_1,
 				std::placeholders::_2));
 	}
 
-	void
-		on_read(
-			boost::system::error_code ec,
-			std::size_t bytes_transferred)
+	void OnRead( boost::system::error_code p_ec,
+			std::size_t p_bytes_transferred)
 	{
-		boost::ignore_unused(bytes_transferred);
+		boost::ignore_unused(p_bytes_transferred);
 
-		if (ec)
-			return fail(ec, "read");
+		if (p_ec)
+		{
+			return Fail(p_ec, "read");
+		}
+		else
+		{
+			// Write the message to standard out
+			std::cout << m_res << std::endl;
 
-		// Write the message to standard out
-		std::cout << res_ << std::endl;
+			// Gracefully close the socket
+			m_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, p_ec);
 
-		// Gracefully close the socket
-		socket_.shutdown(tcp::socket::shutdown_both, ec);
-
-		// not_connected happens sometimes so don't bother reporting it.
-		if (ec && ec != boost::system::errc::not_connected)
-			return fail(ec, "shutdown");
+			// not_connected happens sometimes so don't bother reporting it.
+			if (p_ec && p_ec != boost::system::errc::not_connected)
+			{
+				return Fail(p_ec, "shutdown");
+			}
+		}
 
 		// If we get here then the connection is closed gracefully
 	}
@@ -169,24 +170,27 @@ int main(int argc, char** argv)
 			"Example:\n" <<
 			"    http-client-async www.example.com 80 /\n" <<
 			"    http-client-async www.example.com 80 / 1.0\n";
-		return EXIT_FAILURE;
 	}
-	auto const host = argv[1];
-	auto const port = argv[2];
-	auto const target = argv[3];
-	int version = argc == 5 && !std::strcmp("1.0", argv[4]) ? 10 : 11;
+	else
+	{
+		auto const host = argv[1];
+		auto const port = argv[2];
+		auto const target = argv[3];
+		int version = argc == 5 && !std::strcmp("1.0", argv[4]) ? 10 : 11;
 
-	// The io_context is required for all I/O
-	boost::asio::io_context ioc;
+		// The io_context is required for all I/O
+		boost::asio::io_context l_IOContext;
 
-	// Launch the asynchronous operation
-	std::make_shared<session>(ioc)->run(host, port, target, version);
+		// Launch the asynchronous operation
+		std::make_shared<Session>(l_IOContext)->Run(host, port, target, version);
 
-	// Run the I/O service. The call will return when
-	// the get operation is complete.
-	ioc.run();
+		// Run the I/O service. The call will return when
+		// the get operation is complete.
+		l_IOContext.run();
 
-	std::cin.get();
+		std::cin.get();
+		return EXIT_SUCCESS;
+	}
+	return EXIT_FAILURE;
 
-	return EXIT_SUCCESS;
 }
