@@ -28,6 +28,7 @@ boost::mutex g_coutMutex;
 const unsigned int cg_numberOfThreads = 4;
 
 /// not used
+/*
 class MyClass
 {
 public:
@@ -58,14 +59,48 @@ void ThreadPrint(std::string p_msg)
 	std::cout << "[" << boost::this_thread::get_id() << "]: " << p_msg << std::endl;
 	g_coutMutex.unlock();
 }
+*/
 
 /* Simple thread writing to cout*/
 void WorkerThread(std::shared_ptr<boost::asio::io_service> p_ioService)
 {
-	ThreadPrint("Thread Start");
+	g_coutMutex.lock();
+	std::cout << "[" << boost::this_thread::get_id() << "]: Starting:" << std::endl;
+	g_coutMutex.unlock();
+
 	p_ioService->run();
-	ThreadPrint("Thread Exit");
-	
+
+	g_coutMutex.lock();
+	std::cout << "[" << boost::this_thread::get_id() << "]: Exiting: " << std::endl;
+	g_coutMutex.unlock();
+}
+
+size_t Fibonacci(size_t p_value)
+{
+	if (p_value <= 1)
+	{
+		return p_value;
+	}
+	boost::this_thread::sleep(
+		boost::posix_time::milliseconds( 10 )
+	);
+	return Fibonacci(p_value - 1) + Fibonacci(p_value - 2);
+}
+
+void CalculateFibonacci(size_t p_value)
+{
+	g_coutMutex.lock();
+	std::cout << "[" << boost::this_thread::get_id() << "]: Now Calculating Fibonacci:( " 
+		<< p_value << ")" << std::endl;
+	g_coutMutex.unlock();
+
+	size_t l_fib = Fibonacci(p_value);
+
+	g_coutMutex.lock();
+	std::cout << "[" << boost::this_thread::get_id() << "]: Fibonacci:( "
+		<< p_value << ") = " << l_fib << std::endl;
+	g_coutMutex.unlock();
+
 }
 
 int main(int argc, char* argv[])
@@ -78,18 +113,22 @@ int main(int argc, char* argv[])
 		new boost::asio::io_service::work( *l_ioService)
 	);
 	
-	ThreadPrint(" Press [return] to exit.");
-
 	boost::thread_group l_workerThreads;
 	for (int i = 0; i < cg_numberOfThreads; ++i)
 	{
 		l_workerThreads.create_thread(boost::bind( &WorkerThread, l_ioService));
 	}
 
-	std::cin.get();
+	l_ioService->post( boost::bind(	CalculateFibonacci, 12));
+	l_ioService->post( boost::bind(	CalculateFibonacci, 13));
+	l_ioService->post( boost::bind( CalculateFibonacci, 14));
 
-	l_ioService->stop();
+	l_work.reset();
+
 	l_workerThreads.join_all();
+
+	std::cout << "Press Enter to exit." << std::endl;
+	std::cin.get();
 
 	return 0;
 }
