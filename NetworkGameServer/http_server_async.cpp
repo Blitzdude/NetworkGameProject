@@ -121,49 +121,49 @@ void HandleRequest(
 		l_res.keep_alive(p_req.keep_alive());
 		l_res.body() = p_why.to_string();
 		l_res.prepare_payload();
-		return res;
+		return l_res;
 	};
 
 	// Returns a not found response
 	auto const not_found =
-		[&req](boost::beast::string_view target)
+		[&p_req](boost::beast::string_view target)
 	{
-		boost::beast::http::response<boost::beast::http::string_body> res{ boost::beast::http::status::not_found, req.version() };
-		res.set(boost::beast::http::field::server, BOOST_BEAST_VERSION_STRING);
-		res.set(boost::beast::http::field::content_type, "text/html");
-		res.keep_alive(req.keep_alive());
-		res.body() = "The resource '" + target.to_string() + "' was not found.";
-		res.prepare_payload();
-		return res;
+		boost::beast::http::response<boost::beast::http::string_body> l_res{ boost::beast::http::status::not_found, p_req.version() };
+		l_res.set(boost::beast::http::field::server, BOOST_BEAST_VERSION_STRING);
+		l_res.set(boost::beast::http::field::content_type, "text/html");
+		l_res.keep_alive(p_req.keep_alive());
+		l_res.body() = "The resource '" + target.to_string() + "' was not found.";
+		l_res.prepare_payload();
+		return l_res;
 	};
 
 	// Returns a server error response
 	auto const server_error =
-		[&req](boost::beast::string_view what)
+		[&p_req](boost::beast::string_view what)
 	{
-		boost::beast::http::response<boost::beast::http::string_body> res{ boost::beast::http::status::internal_server_error, req.version() };
-		res.set(boost::beast::http::field::server, BOOST_BEAST_VERSION_STRING);
-		res.set(boost::beast::http::field::content_type, "text/html");
-		res.keep_alive(req.keep_alive());
-		res.body() = "An error occurred: '" + what.to_string() + "'";
-		res.prepare_payload();
-		return res;
+		boost::beast::http::response<boost::beast::http::string_body> l_res{ boost::beast::http::status::internal_server_error, p_req.version() };
+		l_res.set(boost::beast::http::field::server, BOOST_BEAST_VERSION_STRING);
+		l_res.set(boost::beast::http::field::content_type, "text/html");
+		l_res.keep_alive(p_req.keep_alive());
+		l_res.body() = "An error occurred: '" + what.to_string() + "'";
+		l_res.prepare_payload();
+		return l_res;
 	};
 
 	// Make sure we can handle the method
-	if (req.method() != boost::beast::http::verb::get &&
-		req.method() != boost::beast::http::verb::head)
-		return send(bad_request("Unknown HTTP-method"));
+	if (p_req.method() != boost::beast::http::verb::get &&
+		p_req.method() != boost::beast::http::verb::head)
+		return send(l_badRequest("Unknown HTTP-method"));
 
 	// Request path must be absolute and not contain "..".
-	if (req.target().empty() ||
-		req.target()[0] != '/' ||
-		req.target().find("..") != boost::beast::string_view::npos)
-		return send(bad_request("Illegal request-target"));
+	if (p_req.target().empty() ||
+		p_req.target()[0] != '/' ||
+		p_req.target().find("..") != boost::beast::string_view::npos)
+		return send(l_badRequest("Illegal request-target"));
 
 	// Build the path to the requested file
-	std::string path = path_cat(doc_root, req.target());
-	if (req.target().back() == '/')
+	std::string path = path_cat(doc_root, p_req.target());
+	if (p_req.target().back() == '/')
 		path.append("index.html");
 
 	// Attempt to open the file
@@ -173,7 +173,7 @@ void HandleRequest(
 
 	// Handle the case where the file doesn't exist
 	if (ec == boost::system::errc::no_such_file_or_directory)
-		return send(not_found(req.target()));
+		return send(not_found(p_req.target()));
 
 	// Handle an unknown error
 	if (ec)
@@ -183,13 +183,13 @@ void HandleRequest(
 	auto const size = body.size();
 
 	// Respond to HEAD request
-	if (req.method() == boost::beast::http::verb::head)
+	if (p_req.method() == boost::beast::http::verb::head)
 	{
-		boost::beast::http::response<boost::beast::http::empty_body> res{ boost::beast::http::status::ok, req.version() };
+		boost::beast::http::response<boost::beast::http::empty_body> res{ boost::beast::http::status::ok, p_req.version() };
 		res.set(boost::beast::http::field::server, BOOST_BEAST_VERSION_STRING);
 		res.set(boost::beast::http::field::content_type, GetMimeType(path));
 		res.content_length(size);
-		res.keep_alive(req.keep_alive());
+		res.keep_alive(p_req.keep_alive());
 		return send(std::move(res));
 	}
 
@@ -197,11 +197,11 @@ void HandleRequest(
 	boost::beast::http::response<boost::beast::http::file_body> res{
 		std::piecewise_construct,
 		std::make_tuple(std::move(body)),
-		std::make_tuple(boost::beast::http::status::ok, req.version()) };
+		std::make_tuple(boost::beast::http::status::ok, p_req.version()) };
 	res.set(boost::beast::http::field::server, BOOST_BEAST_VERSION_STRING);
 	res.set(boost::beast::http::field::content_type, GetMimeType(path));
 	res.content_length(size);
-	res.keep_alive(req.keep_alive());
+	res.keep_alive(p_req.keep_alive());
 	return send(std::move(res));
 }
 
@@ -451,7 +451,7 @@ public:
 
 //------------------------------------------------------------------------------
 
-int main(int argc, char* argv[])
+int notmain(int argc, char* argv[])
 {
 	// Check command line arguments.
 	if (argc != 5)
