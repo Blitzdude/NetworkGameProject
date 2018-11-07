@@ -48,8 +48,6 @@ void TPrintException(const std::exception &p_ex)
 	g_coutMutex.unlock();
 }
 
-
-
 /* Simple thread writing to cout*/
 void WorkerThread(std::shared_ptr<boost::asio::io_service> p_ioService)
 {
@@ -78,8 +76,7 @@ void WorkerThread(std::shared_ptr<boost::asio::io_service> p_ioService)
 }
 
 void TimerHandler(const boost::system::error_code& p_ec,
-					std::shared_ptr<boost::asio::deadline_timer> p_timer,
-					std::shared_ptr<boost::asio::io_service::strand> p_strand)
+					std::shared_ptr<boost::asio::deadline_timer> p_timer)
 {
 	if (p_ec)
 	{
@@ -88,30 +85,19 @@ void TimerHandler(const boost::system::error_code& p_ec,
 	else
 	{
 		TPrint("TimeHandler");
-		p_timer->expires_from_now(boost::posix_time::seconds(1));
-		p_timer->async_wait(
-				p_strand->wrap(boost::bind( &TimerHandler, _1, p_timer, p_strand))
-		);
+		p_timer->expires_from_now(boost::posix_time::seconds(5));
+		p_timer->async_wait(boost::bind( &TimerHandler, _1, p_timer));
 	}
-}
-
-void PrintNum(int p_val)
-{
-	std::cout << "[" << boost::this_thread::get_id() << "] x = " << p_val << std::endl;
-	boost::this_thread::sleep(boost::posix_time::milliseconds(1000));
 }
 
 int main(int argc, char* argv[])
 {
-	/* create io_service, work objects and strand object*/
+	/* create io_service, work objects*/
 	std::shared_ptr<boost::asio::io_service> l_ioService(
 		new boost::asio::io_service
 	);
 	std::shared_ptr<boost::asio::io_service::work> l_work(
 		new boost::asio::io_service::work( *l_ioService)
-	);
-	std::shared_ptr<boost::asio::io_service::strand> l_strand(
-		new boost::asio::io_service::strand( *l_ioService)
 	);
 
 	TPrint("This program will exit when all work has finished");
@@ -123,22 +109,15 @@ int main(int argc, char* argv[])
 		l_workerThreads.create_thread(boost::bind( &WorkerThread, l_ioService));
 	}
 
-	boost::this_thread::sleep( boost::posix_time::seconds(1));
-
-	l_strand->post(boost::bind(&PrintNum, 1));
-	l_strand->post(boost::bind(&PrintNum, 2));
-	l_strand->post(boost::bind(&PrintNum, 3));
-	l_strand->post(boost::bind(&PrintNum, 4));
-	l_strand->post(boost::bind(&PrintNum, 5));
+	/* Create an asynchronous 5 second Deadline timer shared pointer */
+	/* NOTE: in async_wait() function, the _1 parameter is a placeholder parameter.
+		Basically it means "First parameter, which will be supplied later.*/
 
 	std::shared_ptr<boost::asio::deadline_timer> l_timer(
 		new boost::asio::deadline_timer( *l_ioService)
 	);
-
-	l_timer->expires_from_now(boost::posix_time::seconds(1));
-	l_timer->async_wait(
-			l_strand->wrap( boost::bind( &TimerHandler, _1, l_timer, l_strand))
-	);
+	l_timer->expires_from_now(boost::posix_time::seconds(5));
+	l_timer->async_wait(boost::bind( &TimerHandler, _1, l_timer));
 
 	std::cin.get();
 

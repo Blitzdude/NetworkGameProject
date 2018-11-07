@@ -77,44 +77,27 @@ void WorkerThread(std::shared_ptr<boost::asio::io_service> p_ioService)
 	TPrint("Exiting");
 }
 
-void TimerHandler(const boost::system::error_code& p_ec,
-					std::shared_ptr<boost::asio::deadline_timer> p_timer,
-					std::shared_ptr<boost::asio::io_service::strand> p_strand)
+/* Recursivly throws an runtime error over and over. */
+void RaiseAnException(std::shared_ptr<boost::asio::io_service> p_ioService)
 {
-	if (p_ec)
-	{
-		TPrintError(p_ec);
-	}
-	else
-	{
-		TPrint("TimeHandler");
-		p_timer->expires_from_now(boost::posix_time::seconds(1));
-		p_timer->async_wait(
-				p_strand->wrap(boost::bind( &TimerHandler, _1, p_timer, p_strand))
-		);
-	}
-}
+	TPrint(__FUNCTION__);
 
-void PrintNum(int p_val)
-{
-	std::cout << "[" << boost::this_thread::get_id() << "] x = " << p_val << std::endl;
-	boost::this_thread::sleep(boost::posix_time::milliseconds(1000));
+	p_ioService->post( boost::bind ( &RaiseAnException, p_ioService));
+
+	throw(std::runtime_error( "Oops!"));
 }
 
 int main(int argc, char* argv[])
 {
-	/* create io_service, work objects and strand object*/
+	/* create io_service, work objects*/
 	std::shared_ptr<boost::asio::io_service> l_ioService(
 		new boost::asio::io_service
 	);
 	std::shared_ptr<boost::asio::io_service::work> l_work(
 		new boost::asio::io_service::work( *l_ioService)
 	);
-	std::shared_ptr<boost::asio::io_service::strand> l_strand(
-		new boost::asio::io_service::strand( *l_ioService)
-	);
 
-	TPrint("This program will exit when all work has finished");
+	TPrint("This program will exit when all work ahs finished");
 
 	// create worker threads, so ioService has something to do.
 	boost::thread_group l_workerThreads;
@@ -123,32 +106,13 @@ int main(int argc, char* argv[])
 		l_workerThreads.create_thread(boost::bind( &WorkerThread, l_ioService));
 	}
 
-	boost::this_thread::sleep( boost::posix_time::seconds(1));
-
-	l_strand->post(boost::bind(&PrintNum, 1));
-	l_strand->post(boost::bind(&PrintNum, 2));
-	l_strand->post(boost::bind(&PrintNum, 3));
-	l_strand->post(boost::bind(&PrintNum, 4));
-	l_strand->post(boost::bind(&PrintNum, 5));
-
-	std::shared_ptr<boost::asio::deadline_timer> l_timer(
-		new boost::asio::deadline_timer( *l_ioService)
-	);
-
-	l_timer->expires_from_now(boost::posix_time::seconds(1));
-	l_timer->async_wait(
-			l_strand->wrap( boost::bind( &TimerHandler, _1, l_timer, l_strand))
-	);
-
-	std::cin.get();
-
-	l_ioService->stop();
+	l_ioService->post( boost::bind( &RaiseAnException, l_ioService));
+	//l_work.reset();
 
 	l_workerThreads.join_all();
 
 	TPrint("Press Enter to exit program");
 	std::cin.get();
-
 
 	return 0;
 }
