@@ -1,12 +1,11 @@
 #include <boost/asio.hpp>
 #include <boost/thread/thread.hpp>
 #include <boost/thread/mutex.hpp>
-#include <boost/lexical_cast.hpp>
 #include <iostream>
 #include <string>
 #include <memory>
 
-// TODO: Finish going through tutorial TCP
+
 /* coding convention
 variables:
 	l_ = local
@@ -14,7 +13,7 @@ variables:
 	m_ = member
 	g_ = global
 	c(*)_ = constant
-	s(*)_ = static
+	s(*)_ = static 
 	sc(*)_ = static constant
 
 Naming:
@@ -35,7 +34,7 @@ void TPrint(std::string p_msg)
 	g_coutMutex.unlock();
 }
 
-void TPrintError(const boost::system::error_code &p_ec)
+void TPrintError( const boost::system::error_code &p_ec)
 {
 	g_coutMutex.lock();
 	std::cout << "[" << boost::this_thread::get_id() << "] Error: " << p_ec << std::endl;
@@ -71,13 +70,36 @@ void WorkerThread(std::shared_ptr<boost::asio::io_service> p_ioService)
 		}
 		catch (const std::exception& p_ex)
 		{
-			TPrintException(p_ex);
+			TPrintException( p_ex );
 		}
 	}
 
 	TPrint("Exiting");
 }
 
+void TimerHandler(const boost::system::error_code& p_ec,
+					std::shared_ptr<boost::asio::deadline_timer> p_timer,
+					std::shared_ptr<boost::asio::io_service::strand> p_strand)
+{
+	if (p_ec)
+	{
+		TPrintError(p_ec);
+	}
+	else
+	{
+		TPrint("TimeHandler");
+		p_timer->expires_from_now(boost::posix_time::seconds(1));
+		p_timer->async_wait(
+				p_strand->wrap(boost::bind( &TimerHandler, _1, p_timer, p_strand))
+		);
+	}
+}
+
+void PrintNum(int p_val)
+{
+	std::cout << "[" << boost::this_thread::get_id() << "] x = " << p_val << std::endl;
+	boost::this_thread::sleep(boost::posix_time::milliseconds(1000));
+}
 
 int main(int argc, char* argv[])
 {
@@ -86,43 +108,37 @@ int main(int argc, char* argv[])
 		new boost::asio::io_service
 	);
 	std::shared_ptr<boost::asio::io_service::work> l_work(
-		new boost::asio::io_service::work(*l_ioService)
+		new boost::asio::io_service::work( *l_ioService)
 	);
 	std::shared_ptr<boost::asio::io_service::strand> l_strand(
-		new boost::asio::io_service::strand(*l_ioService)
+		new boost::asio::io_service::strand( *l_ioService)
 	);
 
-	TPrint("Press Enter the exit.");
+	TPrint("This program will exit when all work has finished");
 
 	// create worker threads, so ioService has something to do.
 	boost::thread_group l_workerThreads;
 	for (int i = 0; i < cg_numberOfThreads; ++i)
 	{
-		l_workerThreads.create_thread(boost::bind(&WorkerThread, l_ioService));
+		l_workerThreads.create_thread(boost::bind( &WorkerThread, l_ioService));
 	}
 
-	boost::asio::ip::tcp::socket l_socket(*l_ioService);
+	boost::this_thread::sleep( boost::posix_time::seconds(1));
 
-	try
-	{
-		boost::asio::ip::tcp::resolver l_resolver(*l_ioService);
-		boost::asio::ip::tcp::resolver::query l_query(
-			"www.google.com",
-			boost::lexical_cast<std::string>( 80 )
-		);
-		boost::asio::ip::tcp::resolver::iterator l_iterator = l_resolver.resolve( l_query);
-		boost::asio::ip::tcp::endpoint l_endpoint ( *l_iterator );
+	l_strand->post(boost::bind(&PrintNum, 1));
+	l_strand->post(boost::bind(&PrintNum, 2));
+	l_strand->post(boost::bind(&PrintNum, 3));
+	l_strand->post(boost::bind(&PrintNum, 4));
+	l_strand->post(boost::bind(&PrintNum, 5));
 
-		g_coutMutex.lock();
-		std::cout << "Connecting to: " << l_endpoint << std::endl;
-		g_coutMutex.unlock();
+	std::shared_ptr<boost::asio::deadline_timer> l_timer(
+		new boost::asio::deadline_timer( *l_ioService)
+	);
 
-
-	}
-	catch (const std::exception& l_ex)
-	{
-		TPrintException(l_ex);
-	}
+	l_timer->expires_from_now(boost::posix_time::seconds(1));
+	l_timer->async_wait(
+			l_strand->wrap( boost::bind( &TimerHandler, _1, l_timer, l_strand))
+	);
 
 	std::cin.get();
 
