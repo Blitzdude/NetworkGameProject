@@ -78,6 +78,17 @@ void WorkerThread(std::shared_ptr<boost::asio::io_service> p_ioService)
 	TPrint("Exiting");
 }
 
+void OnConnect(const boost::system::error_code& p_ec, std::shared_ptr<boost::asio::ip::tcp::socket> p_socket)
+{
+    if (p_ec)
+    {
+        TPrintError(p_ec);
+    }
+    else
+    {
+        TPrint("Connected!");
+    }
+}
 
 int main(int argc, char* argv[])
 {
@@ -101,7 +112,9 @@ int main(int argc, char* argv[])
 		l_workerThreads.create_thread(boost::bind(&WorkerThread, l_ioService));
 	}
 
-	boost::asio::ip::tcp::socket l_socket(*l_ioService);
+	std::shared_ptr<boost::asio::ip::tcp::socket> l_socket(
+        new boost::asio::ip::tcp::socket(*l_ioService)
+    );
 
 	try
 	{
@@ -110,14 +123,14 @@ int main(int argc, char* argv[])
 			"www.google.com",
 			boost::lexical_cast<std::string>( 80 )
 		);
-		boost::asio::ip::tcp::resolver::iterator l_iterator = l_resolver.resolve( l_query);
+		boost::asio::ip::tcp::resolver::iterator l_iterator = l_resolver.resolve( l_query); 
 		boost::asio::ip::tcp::endpoint l_endpoint ( *l_iterator );
 
 		g_coutMutex.lock();
 		std::cout << "Connecting to: " << l_endpoint << std::endl;
 		g_coutMutex.unlock();
 
-
+        l_socket->async_connect( l_endpoint, boost::bind( OnConnect, _1, l_socket));
 	}
 	catch (const std::exception& l_ex)
 	{
@@ -126,12 +139,13 @@ int main(int argc, char* argv[])
 
 	std::cin.get();
 
+    boost::system::error_code l_ec;
+    l_socket->shutdown( boost::asio::ip::tcp::socket::shutdown_both, l_ec);
+    l_socket->close( l_ec);
+
 	l_ioService->stop();
 
 	l_workerThreads.join_all();
-
-	TPrint("Press Enter to exit program");
-	std::cin.get();
 
 
 	return 0;
