@@ -1,8 +1,6 @@
 
 #include "network.h"
-#include 
-#include 
-#include 
+#include <boost/atomic.hpp>
 
 //-----------------------------------------------------------------------------
 
@@ -22,7 +20,7 @@ boost::asio::io_service & Hive::GetService()
 
 bool Hive::HasStopped()
 {
-    return (boost::interprocess::detail::atomic_cas32(&m_shutdown, 1, 1) == 1);
+    return (boost::interprocess::ipcdetail::atomic_cas32(&m_shutdown, 1, 1) == 1);
 }
 
 void Hive::Poll()
@@ -37,7 +35,7 @@ void Hive::Run()
 
 void Hive::Stop()
 {
-    if (boost::interprocess::detail::atomic_cas32(&m_shutdown, 1, 0) == 0)
+    if (boost::interprocess::ipcdetail::atomic_cas32(&m_shutdown, 1, 0) == 0)
     {
         m_work_ptr.reset();
         m_io_service.run();
@@ -47,7 +45,7 @@ void Hive::Stop()
 
 void Hive::Reset()
 {
-    if (boost::interprocess::detail::atomic_cas32(&m_shutdown, 0, 1) == 1)
+    if (boost::interprocess::ipcdetail::atomic_cas32(&m_shutdown, 0, 1) == 1)
     {
         m_io_service.reset();
         m_work_ptr.reset(new boost::asio::io_service::work(m_io_service));
@@ -74,7 +72,7 @@ void Acceptor::StartTimer()
 
 void Acceptor::StartError(const boost::system::error_code & error)
 {
-    if (boost::interprocess::detail::atomic_cas32(&m_error_state, 1, 0) == 0)
+    if (boost::interprocess::ipcdetail::atomic_cas32(&m_error_state, 1, 0) == 0)
     {
         boost::system::error_code ec;
         m_acceptor.cancel(ec);
@@ -169,7 +167,7 @@ void Acceptor::SetTimerInterval(int32_t timer_interval)
 
 bool Acceptor::HasError()
 {
-    return (boost::interprocess::detail::atomic_cas32(&m_error_state, 1, 1) == 1);
+    return (boost::interprocess::ipcdetail::atomic_cas32(&m_error_state, 1, 1) == 1);
 }
 
 //-----------------------------------------------------------------------------
@@ -222,7 +220,7 @@ void Connection::StartTimer()
 
 void Connection::StartError(const boost::system::error_code & error)
 {
-    if (boost::interprocess::detail::atomic_cas32(&m_error_state, 1, 0) == 0)
+    if (boost::interprocess::ipcdetail::atomic_cas32(&m_error_state, 1, 0) == 0)
     {
         boost::system::error_code ec;
         m_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
@@ -351,7 +349,7 @@ boost::asio::ip::tcp::socket & Connection::GetSocket()
     return m_socket;
 }
 
-boost::asio::strand & Connection::GetStrand()
+boost::asio::io_service::strand & Connection::GetStrand()
 {
     return m_io_strand;
 }
@@ -383,7 +381,5 @@ void Connection::SetTimerInterval(int32_t timer_interval)
 
 bool Connection::HasError()
 {
-    return (boost::interprocess::detail::atomic_cas32(&m_error_state, 1, 1) == 1);
+    return (boost::interprocess::ipcdetail::atomic_cas32(&m_error_state, 1, 1) == 1);
 }
-
-//-----------------------------------------------------------------------------

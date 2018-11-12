@@ -89,10 +89,11 @@ void OnConnect(const boost::system::error_code& p_ec, std::shared_ptr<boost::asi
         TPrint("Connected!");
     }
 }
+/*
 
 int main(int argc, char* argv[])
 {
-	/* create io_service, work objects and strand object*/
+	// create io_service, work objects and strand object 
 	std::shared_ptr<boost::asio::io_service> l_ioService(
 		new boost::asio::io_service
 	);
@@ -150,3 +151,4 @@ int main(int argc, char* argv[])
 
 	return 0;
 }
+*/

@@ -2,7 +2,11 @@
 #pragma once
 //-----------------------------------------------------------------------------
 
-#include <boost>
+#include <boost/interprocess/detail/atomic.hpp>
+#include <boost/asio.hpp>
+#include <boost/bind.hpp>
+#include <boost/lexical_cast.hpp>
+#include <boost/enable_shared_from_this.hpp>
 //-----------------------------------------------------------------------------
 
 using boost::uint64_t;
@@ -31,7 +35,7 @@ class Connection : public boost::enable_shared_from_this< Connection >
 private:
     boost::shared_ptr< Hive > m_hive;
     boost::asio::ip::tcp::socket m_socket;
-    boost::asio::strand m_io_strand;
+    boost::asio::io_service::strand m_io_strand;
     boost::asio::deadline_timer m_timer;
     boost::posix_time::ptime m_last_time;
     std::vector< uint8_t > m_recv_buffer;
@@ -47,7 +51,7 @@ protected:
 
 private:
     Connection(const Connection & rhs);
-    Connection & operator =(const Connection & rhs);
+    Connection & operator= (const Connection & rhs);
     void StartSend();
     void StartRecv(int32_t total_bytes);
     void StartTimer();
@@ -89,7 +93,7 @@ public:
     boost::asio::ip::tcp::socket & GetSocket();
 
     // Returns the strand object.
-    boost::asio::strand & GetStrand();
+    boost::asio::io_service::strand & GetStrand();
 
     // Sets the application specific receive buffer size used. For stream 
     // based protocols such as HTTP, you want this to be pretty large, like 
@@ -139,7 +143,7 @@ class Acceptor : public boost::enable_shared_from_this< Acceptor >
 private:
     boost::shared_ptr< Hive > m_hive;
     boost::asio::ip::tcp::acceptor m_acceptor;
-    boost::asio::strand m_io_strand;
+    boost::asio::io_service::strand m_io_strand;
     boost::asio::deadline_timer m_timer;
     boost::posix_time::ptime m_last_time;
     int32_t m_timer_interval;
@@ -182,7 +186,7 @@ public:
     boost::asio::ip::tcp::acceptor & GetAcceptor();
 
     // Returns the strand object.
-    boost::asio::strand & GetStrand();
+    boost::asio::io_service::strand & GetStrand();
 
     // Sets the timer interval of the object. The interval is changed after 
     // the next update is called. The default value is 1000 ms.
