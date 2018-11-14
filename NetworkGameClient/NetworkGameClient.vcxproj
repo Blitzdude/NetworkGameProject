@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="daytime_client.cpp" />
     <ClCompile Include="http_client_async.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="mainGame.cpp" />
@@ -26,6 +27,7 @@
     <ClCompile Include="Player.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\include\tagOrDie.h" />
     <ClInclude Include="mainGame.h" />
     <ClInclude Include="olcPixelGameEngine.h" />
     <ClInclude Include="Player.h" />

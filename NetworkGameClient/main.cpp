@@ -1,7 +1,7 @@
 
 #include "mainGame.h"
 
-int main()
+int mainNot()
 {
     MainGame app;
     if (app.Construct(800, 600, 1, 1))

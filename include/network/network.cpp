@@ -155,6 +155,12 @@ boost::asio::ip::tcp::acceptor & Acceptor::GetAcceptor()
     return m_acceptor;
 }
 
+boost::asio::io_service::strand & Acceptor::GetStrand()
+{
+    // TODO: insert return statement here
+    return m_io_strand;
+}
+
 int32_t Acceptor::GetTimerInterval() const
 {
     return m_timer_interval;

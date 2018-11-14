@@ -19,11 +19,11 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\include\network\network.cpp" />
+    <ClCompile Include="daytime_server.cpp" />
     <ClCompile Include="http_server_async.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\include\network\network.h" />
+    <ClInclude Include="..\include\tagOrDie.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
