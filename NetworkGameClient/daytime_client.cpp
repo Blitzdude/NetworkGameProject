@@ -43,18 +43,18 @@ int main(int argc, char* argv[])
         while (l_isRunning)
         {
             // get input
+            std::cout << "Enter message: ";
             std::cin >> l_buffer[0];
-
+           
             // send to server
 
-            // wait for reply
 
-            std::cout << "Enter message: ";
             int8 request[SOCKET_BUFFER_SIZE];
             std::cin.getline(request, SOCKET_BUFFER_SIZE);
             size_t request_length = std::strlen(request);
             s.send_to(boost::asio::buffer(request, request_length), *endpoints.begin());
 
+            // wait for reply
             int8 reply[SOCKET_BUFFER_SIZE];
             udp::endpoint sender_endpoint;
             size_t reply_length = s.receive_from(

@@ -19,43 +19,71 @@ class server
 {
 public:
     server(boost::asio::io_service& io_service, int16 port)
-        : socket_(io_service, udp::endpoint(udp::v4(), port))
+        : m_socket(io_service, udp::endpoint(udp::v4(), port))
     {
-        do_receive();
+        DoReceive();
     }
 
-    void do_receive()
+    void DoReceive()
     {
-        socket_.async_receive_from(
-            boost::asio::buffer(data_, SOCKET_BUFFER_SIZE), sender_endpoint_,
-            [this](boost::system::error_code ec, uint32 bytes_recvd)
+        m_socket.async_receive_from(
+            boost::asio::buffer(m_data, SOCKET_BUFFER_SIZE), m_senderEndpoint,
+            [this](boost::system::error_code p_ec, uint32 p_bytesReovered)
         {
-            if (!ec && bytes_recvd > 0)
+            if (!p_ec && p_bytesReovered > 0)
             {
-                std::cout << "Bytes received: " << bytes_recvd << " " << data_ <<  std::endl;
-                do_send(bytes_recvd);
+                std::cout << "Bytes received: " << p_bytesReovered << " " << m_data <<  std::endl;
+                DoSend(p_bytesReovered);
             }
             else
             {
-                do_receive();
+                DoReceive();
             }
         });
     }
 
-    void do_send(uint32 length)
+    void DoSend(uint32 length)
     {
-        socket_.async_send_to(
-            boost::asio::buffer(data_, length), sender_endpoint_,
+        // TODO: This no work
+        // compose message
+        int32 l_writeIndex = 0;
+        int32 l_buffer[SOCKET_BUFFER_SIZE];
+
+        memcpy(&l_buffer, &l_playerX, sizeof(l_playerX));
+        l_writeIndex += sizeof(l_playerX);
+
+        memcpy(&l_buffer, &l_playerY, sizeof(l_playerY));
+        l_writeIndex += sizeof(l_playerY);
+
+        memcpy(&l_buffer, &l_isRunning, sizeof(l_isRunning));
+        
+
+        // Send back to client
+        int32 l_BufferLength = sizeof(l_playerX) + sizeof(l_playerY) + sizeof(l_isRunning);
+        m_socket.async_send_to(
+            boost::asio::buffer(l_buffer, l_BufferLength), m_senderEndpoint,
             [this](boost::system::error_code /*ec*/, uint32 /*bytes_sent*/)
         {
-            do_receive();
+            DoReceive();
         });
     }
 
+    // Getters
+    const int8& GetData() const { return m_data[0];   };
+
+    // Player init
+
+    bool32 l_isRunning = 1;
+    int32 l_playerX = 0;
+    int32 l_playerY = 0;
+
 private:
-    udp::socket socket_;
-    udp::endpoint sender_endpoint_;
-    int8 data_[SOCKET_BUFFER_SIZE];
+    udp::socket m_socket;
+    udp::endpoint m_senderEndpoint;
+    int8 m_data[SOCKET_BUFFER_SIZE];
+
+
+
 };
 
 int main(int argc, char* argv[])
@@ -64,19 +92,35 @@ int main(int argc, char* argv[])
     {
         boost::asio::io_service io_service;
 
-        server s(io_service, PORT);
+        server l_server(io_service, PORT);
 
         io_service.run();
 
-        // Player init
-        int32 l_playerX = 0;
-        int32 l_playerY = 0;
 
-        bool32 l_isRunning = 1;
-
-        while (l_isRunning)
+        while (l_server.l_isRunning)
         {
-
+            int8 player_input = l_server.GetData();
+            switch (player_input)
+            {
+            case 'w':
+                ++l_server.l_playerY;
+                break;
+            case 's':
+                --l_server.l_playerY;
+                break;
+            case 'a':
+                --l_server.l_playerX;
+                break;
+            case 'd':
+                ++l_server.l_playerX;
+                break;
+            case 'q':
+                l_server.l_isRunning = 0;
+                break;
+            default:
+                std::cout << "unhandled input" << std::endl;
+                break;
+            }
         }
     }
     catch (std::exception& e)
