@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="boost_serialize_tutorial.cpp" />
     <ClCompile Include="daytime_server.cpp" />
     <ClCompile Include="http_server_async.cpp" />
   </ItemGroup>

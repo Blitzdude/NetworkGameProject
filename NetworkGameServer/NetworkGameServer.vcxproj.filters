@@ -21,6 +21,9 @@
     <ClCompile Include="daytime_server.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="boost_serialize_tutorial.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\tagOrDie.h">

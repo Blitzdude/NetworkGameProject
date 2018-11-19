@@ -48,20 +48,10 @@ public:
         // compose message
         int32 l_writeIndex = 0;
         int32 l_buffer[SOCKET_BUFFER_SIZE];
-
-        memcpy(&l_buffer, &l_playerX, sizeof(l_playerX));
-        l_writeIndex += sizeof(l_playerX);
-
-        memcpy(&l_buffer, &l_playerY, sizeof(l_playerY));
-        l_writeIndex += sizeof(l_playerY);
-
-        memcpy(&l_buffer, &l_isRunning, sizeof(l_isRunning));
         
-
         // Send back to client
-        int32 l_BufferLength = sizeof(l_playerX) + sizeof(l_playerY) + sizeof(l_isRunning);
         m_socket.async_send_to(
-            boost::asio::buffer(l_buffer, l_BufferLength), m_senderEndpoint,
+            boost::asio::buffer(l_buffer, SOCKET_BUFFER_SIZE), m_senderEndpoint,
             [this](boost::system::error_code /*ec*/, uint32 /*bytes_sent*/)
         {
             DoReceive();
@@ -86,7 +76,7 @@ private:
 
 };
 
-int main(int argc, char* argv[])
+int notmain1(int argc, char* argv[])
 {
     try
     {

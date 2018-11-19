@@ -159,7 +159,7 @@ void OnAccept(const boost::system::error_code& p_ec, std::shared_ptr<boost::asio
     }
 }
 
-int mainNot(int argc, char* argv[])
+int notmain(int argc, char* argv[])
 {
 /* // moved to Server class constructor
     // create io_service, work objects and strand object

@@ -1,0 +1,1 @@
+22 serialization::archive 17 0 0 0 0 0 0 35 59 2.446699905e+01 23 45 2.554400063e+01 11 Wall Street 12 Wayne Street
