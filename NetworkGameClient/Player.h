@@ -1,8 +1,9 @@
 #pragma once
+#include "tagOrDie.h"
 
 struct PlayerInput
 {
-    bool up,down,left,right;
+    bool32 up,down,left,right;
 };
 
 struct PlayerState

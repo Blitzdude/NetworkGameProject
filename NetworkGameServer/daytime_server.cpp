@@ -27,7 +27,7 @@ public:
     void DoReceive()
     {
         m_socket.async_receive_from(
-            boost::asio::buffer(m_data, SOCKET_BUFFER_SIZE), m_senderEndpoint,
+            boost::asio::buffer(m_data, TOD_SOCKET_BUFFER_SIZE), m_senderEndpoint,
             [this](boost::system::error_code p_ec, uint32 p_bytesReovered)
         {
             if (!p_ec && p_bytesReovered > 0)
@@ -47,11 +47,11 @@ public:
         // TODO: This no work
         // compose message
         int32 l_writeIndex = 0;
-        int32 l_buffer[SOCKET_BUFFER_SIZE];
+        int32 l_buffer[TOD_SOCKET_BUFFER_SIZE];
         
         // Send back to client
         m_socket.async_send_to(
-            boost::asio::buffer(l_buffer, SOCKET_BUFFER_SIZE), m_senderEndpoint,
+            boost::asio::buffer(l_buffer, TOD_SOCKET_BUFFER_SIZE), m_senderEndpoint,
             [this](boost::system::error_code /*ec*/, uint32 /*bytes_sent*/)
         {
             DoReceive();
@@ -70,7 +70,7 @@ public:
 private:
     udp::socket m_socket;
     udp::endpoint m_senderEndpoint;
-    int8 m_data[SOCKET_BUFFER_SIZE];
+    int8 m_data[TOD_SOCKET_BUFFER_SIZE];
 
 
 
@@ -82,7 +82,7 @@ int notmain1(int argc, char* argv[])
     {
         boost::asio::io_service io_service;
 
-        server l_server(io_service, PORT);
+        server l_server(io_service, TOD_PORT);
 
         io_service.run();
 

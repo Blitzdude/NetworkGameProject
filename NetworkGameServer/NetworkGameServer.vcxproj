@@ -21,10 +21,11 @@
   <ItemGroup>
     <ClCompile Include="boost_serialize_tutorial.cpp" />
     <ClCompile Include="daytime_server.cpp" />
-    <ClCompile Include="http_server_async.cpp" />
+    <ClCompile Include="NetworkManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\tagOrDie.h" />
+    <ClInclude Include="NetworkManager.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
