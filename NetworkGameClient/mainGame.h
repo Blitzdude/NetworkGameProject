@@ -26,6 +26,7 @@ private:
     void Update(float fElapsedTime);
     void Draw();
 
+    
     std::string ComposeMessage(NetworkLib::ClientMessageType type);
     void SendMessageToServer(std::string p_msg);
 

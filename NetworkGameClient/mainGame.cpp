@@ -9,7 +9,7 @@ bool MainGame::OnUserCreate()
     m_player.m_state.facing = 0.0f;
     m_player.m_state.speed = 30.0f;
 
-   // m_connection.Send(ComposeMessage(NetworkLib::ClientMessageType::Join));
+    m_connection.Send(ComposeMessage(NetworkLib::ClientMessageType::Join));
 
     return true;
 }
@@ -20,7 +20,10 @@ bool MainGame::OnUserUpdate(float fElapsedTime)
     Clear(olc::BLACK);
 
     Update(fElapsedTime);
-   // m_connection.Send(ComposeMessage(NetworkLib::ClientMessageType::Input));
+    if (m_player.HasInput())
+    {
+        m_connection.Send(ComposeMessage(NetworkLib::ClientMessageType::Input));
+    }
     Draw();
 
     return true;
@@ -28,7 +31,7 @@ bool MainGame::OnUserUpdate(float fElapsedTime)
 
 bool MainGame::OnUserDestroy()
 {
-   // m_connection.Send(ComposeMessage(NetworkLib::ClientMessageType::Leave));
+    m_connection.Send(ComposeMessage(NetworkLib::ClientMessageType::Leave));
 
     return true;
 }
@@ -94,24 +97,17 @@ void MainGame::Draw()
 std::string MainGame::ComposeMessage(NetworkLib::ClientMessageType type)
 {  
     std::string l_msg;
-    uint8 packed_input = (uint8)(m_player.m_input.up ? 1 : 0) |
-        (uint8)(m_player.m_input.down ? 1 << 1 : 0) |
-        (uint8)(m_player.m_input.left ? 1 << 2 : 0) |
-        (uint8)(m_player.m_input.right ? 1 << 3 : 0);
 
     switch (type)
     {
     case NetworkLib::ClientMessageType::Join:
-        l_msg.append( reinterpret_cast<char*>(NetworkLib::ClientMessageType::Input));
+        l_msg.append("Join");
         break;
     case NetworkLib::ClientMessageType::Leave:
-        l_msg.append( reinterpret_cast<char*>(NetworkLib::ClientMessageType::Leave));
+        l_msg.append("Leave");
         break;
     case NetworkLib::ClientMessageType::Input:
-        
-
-        l_msg.append( reinterpret_cast<char*>(NetworkLib::ClientMessageType::Input));
-        l_msg.append( reinterpret_cast<char*>(packed_input));
+        l_msg.append("Input");
         break;
 
     default:
