@@ -13,3 +13,8 @@ Player::Player()
 Player::~Player()
 {
 }
+
+bool32 Player::HasInput()
+{
+    return (m_input.up || m_input.down || m_input.left || m_input.right);
+}

@@ -9,6 +9,8 @@ bool MainGame::OnUserCreate()
     m_player.m_state.facing = 0.0f;
     m_player.m_state.speed = 30.0f;
 
+   // m_connection.Send(ComposeMessage(NetworkLib::ClientMessageType::Join));
+
     return true;
 }
 
@@ -17,38 +19,112 @@ bool MainGame::OnUserUpdate(float fElapsedTime)
     // called once per frame
     Clear(olc::BLACK);
 
-    
+    Update(fElapsedTime);
+   // m_connection.Send(ComposeMessage(NetworkLib::ClientMessageType::Input));
+    Draw();
+
+    return true;
+}
+
+bool MainGame::OnUserDestroy()
+{
+   // m_connection.Send(ComposeMessage(NetworkLib::ClientMessageType::Leave));
+
+    return true;
+}
+
+void MainGame::Update(float fElapsedTime)
+{
+
     // update player
     if (GetKey(olc::D).bHeld) // turn left
     {
-       m_player.m_state.facing += 1.0f * fElapsedTime;
+        m_player.m_input.right = false;
+        m_player.m_input.left = true;
+        m_player.m_state.facing += 1.0f * fElapsedTime;
     }
     else if (GetKey(olc::A).bHeld) // turn right
     {
+        m_player.m_input.right = true;
+        m_player.m_input.left = false;
         m_player.m_state.facing -= 1.0f * fElapsedTime;
     }
     if (GetKey(olc::W).bHeld) // forward
     {
+        m_player.m_input.up = true;
+        m_player.m_input.down = false;
+
         m_player.m_state.x += cosf(m_player.m_state.facing) * m_player.m_state.speed * fElapsedTime;
         m_player.m_state.y += sinf(m_player.m_state.facing) * m_player.m_state.speed * fElapsedTime;
 
     }
     else if (GetKey(olc::S).bHeld) // back
     {
+        m_player.m_input.up = false;
+        m_player.m_input.down = true;
+
         m_player.m_state.x -= cosf(m_player.m_state.facing) * m_player.m_state.speed * fElapsedTime;
         m_player.m_state.y -= sinf(m_player.m_state.facing) * m_player.m_state.speed * fElapsedTime;
     }
+
+    
+
+}
+
+void MainGame::Draw()
+{
 
     float l_playerX = m_player.m_state.x;
     float l_playerY = m_player.m_state.y;
     float l_facing = m_player.m_state.facing;
 
     // draw player
-    DrawCircle(l_playerX, l_playerY, 10);
+    DrawCircle((int32_t)l_playerX, (int32_t)l_playerY, 10);
 
-    DrawLine(m_player.m_state.x, m_player.m_state.y, 
-             m_player.m_state.x + cosf(l_facing) * 10.0f,
-             m_player.m_state.y + sinf(l_facing) * 10.0f, olc::MAGENTA);
+    DrawLine(m_player.m_state.x, m_player.m_state.y,
+        m_player.m_state.x + cosf(l_facing) * 10.0f,
+        m_player.m_state.y + sinf(l_facing) * 10.0f, olc::MAGENTA);
 
-    return true;
 }
+
+/*
+    Client msg buffer:
+    uint8: type | uint16: id | uint32: data
+*/
+std::string MainGame::ComposeMessage(NetworkLib::ClientMessageType type)
+{  
+    std::string l_msg;
+    uint8 packed_input = (uint8)(m_player.m_input.up ? 1 : 0) |
+        (uint8)(m_player.m_input.down ? 1 << 1 : 0) |
+        (uint8)(m_player.m_input.left ? 1 << 2 : 0) |
+        (uint8)(m_player.m_input.right ? 1 << 3 : 0);
+
+    switch (type)
+    {
+    case NetworkLib::ClientMessageType::Join:
+        l_msg.append( reinterpret_cast<char*>(NetworkLib::ClientMessageType::Input));
+        break;
+    case NetworkLib::ClientMessageType::Leave:
+        l_msg.append( reinterpret_cast<char*>(NetworkLib::ClientMessageType::Leave));
+        break;
+    case NetworkLib::ClientMessageType::Input:
+        
+
+        l_msg.append( reinterpret_cast<char*>(NetworkLib::ClientMessageType::Input));
+        l_msg.append( reinterpret_cast<char*>(packed_input));
+        break;
+
+    default:
+        break;
+    }
+
+    return l_msg;
+}
+
+
+
+void MainGame::SendMessageToServer(std::string p_msg)
+{
+    m_connection.Send(p_msg);
+}
+

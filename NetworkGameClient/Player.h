@@ -1,5 +1,6 @@
 #pragma once
-#include "tagOrDie.h"
+
+#include <NetworkLib/Constants.h>
 
 struct PlayerInput
 {
@@ -17,10 +18,11 @@ private:
 public:
     Player();
     ~Player();
+
+    bool32 HasInput();
 private:
 public:
     PlayerState m_state;
     PlayerInput m_input;
 
 };
-
