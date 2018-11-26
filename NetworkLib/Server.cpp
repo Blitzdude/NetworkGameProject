@@ -78,6 +78,12 @@ namespace NetworkLib {
 		statistics.RegisterSentMessage(message.size());
 	}
 
+    void Server::send(const boost::asio::mutable_buffer & message, udp::endpoint target)
+    {
+        socket.send_to(message, target);
+        statistics.RegisterSentMessage(message.size());
+    }
+
 	void Server::run_service()
 	{
 		start_receive();
@@ -129,7 +135,31 @@ namespace NetworkLib {
 			send(message, client.second);
 	}
 
-	size_t Server::GetClientCount()
+
+    void Server::SendToClient(const boost::asio::mutable_buffer & message, uint32_t clientID)
+    {
+        try {
+            send(message, clients.at(clientID));
+        }
+        catch (std::out_of_range) {
+            Log::Error(__FUNCTION__": Unknown client ID ", clientID);
+        }
+    }
+
+    void Server::SendToAllExcept(const boost::asio::mutable_buffer & message, uint32_t clientID)
+    {
+        for (auto client : clients)
+            if (client.first != clientID)
+                send(message, client.second);
+    }
+
+    void Server::SendToAll(const boost::asio::mutable_buffer & message)
+    {
+        for (auto client : clients)
+            send(message, client.second);
+    }
+
+    size_t Server::GetClientCount()
 	{
 		return clients.size();
 	}

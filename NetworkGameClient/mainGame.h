@@ -27,7 +27,7 @@ private:
     void Draw();
 
     
-    std::string ComposeMessage(NetworkLib::ClientMessageType type);
+    boost::asio::mutable_buffer ComposeMessage(NetworkLib::ClientMessageType type);
     void SendMessageToServer(std::string p_msg);
 
     NetworkLib::Client m_connection;

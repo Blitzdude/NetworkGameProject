@@ -7,7 +7,7 @@ typedef short int16;
 typedef char int8;
 
 
-static const int NetworkBufferSize = 4096;
+static const int NetworkBufferSize = 1024;
 
 typedef int bool32;
 

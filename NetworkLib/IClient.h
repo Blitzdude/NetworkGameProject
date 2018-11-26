@@ -3,12 +3,12 @@
 
 namespace NetworkLib
 {
-	class IClient abstract
+	class IClient 
 	{
 	public:
 		virtual ~IClient() {};
-		virtual bool HasMessages() abstract = 0;
-		virtual void Send(const std::string& message) abstract = 0;
-		virtual std::string PopMessage() abstract = 0;
+		virtual bool HasMessages()  = 0;
+		virtual void Send(const std::string& message)  = 0;
+		virtual std::string PopMessage()  = 0;
 	};
 }

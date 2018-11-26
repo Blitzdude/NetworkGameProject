@@ -1,5 +1,6 @@
 #pragma once
 #include "Constants.h"
+#include "Messages.h"
 #include "Statistics.h"
 
 #include "LockedQueue.h"
@@ -30,11 +31,17 @@ namespace NetworkLib {
 		void SendToAllExcept(const std::string& message, uint32_t clientID);
 		void SendToAll(const std::string& message);
 
+        void SendToClient(const boost::asio::mutable_buffer& message, uint32_t clientID) override;
+        void SendToAllExcept(const boost::asio::mutable_buffer& message, uint32_t clientID);
+        void SendToAll(const boost::asio::mutable_buffer& message);
+
+
 		size_t GetClientCount() override;
 		uint32_t GetClientIdByIndex(size_t index) override;
 
 		const Statistics& GetStatistics() const { return statistics; };
 		std::vector<std::function<void(uint32_t)>> clientDisconnectedHandlers;
+
 	private:
 		// Network send/receive stuff
         boost::asio::io_service io_service;
@@ -56,6 +63,8 @@ namespace NetworkLib {
 		void on_client_disconnected(int32_t id);
 
 		void send(const std::string& message, udp::endpoint target);
+        void send(const boost::asio::mutable_buffer& message, udp::endpoint target);
+
 
 		// Incoming messages queue
 		LockedQueue<ClientMessage> incomingMessages;

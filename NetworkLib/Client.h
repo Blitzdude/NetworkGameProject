@@ -20,6 +20,8 @@ namespace NetworkLib {
 		virtual ~Client();
 
 		void Send(const std::string& message) override;
+        void Send(const boost::asio::mutable_buffer& message);
+
 
 		bool HasMessages() override;
 

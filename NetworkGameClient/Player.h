@@ -9,7 +9,10 @@ struct PlayerInput
 
 struct PlayerState
 {
-    float x, y, facing, speed; // Facing in radians
+    float x;
+    float y;
+    float facing; // Facing in radians
+    float speed; 
 };
 
 class Player
@@ -20,9 +23,11 @@ public:
     ~Player();
 
     bool32 HasInput();
+
+    void WriteInputPacket(uint8* buffer);
 private:
 public:
     PlayerState m_state;
     PlayerInput m_input;
-
+    uint8 m_id = 0;
 };

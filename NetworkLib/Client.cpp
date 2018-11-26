@@ -46,6 +46,12 @@ namespace NetworkLib {
 		statistics.RegisterSentMessage(message.size());
 	}
 
+    void Client::Send(const boost::asio::mutable_buffer & message)
+    {
+        socket.send_to(message, server_endpoint);
+        statistics.RegisterSentMessage(message.size());
+    }
+
 	bool Client::HasMessages()
 	{
 		return !incomingMessages.empty();

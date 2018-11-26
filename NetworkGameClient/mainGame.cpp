@@ -1,5 +1,6 @@
 #include "mainGame.h"
-
+#include <boost/asio.hpp>
+#include <NetworkLib/Constants.h>
 bool MainGame::OnUserCreate() 
 {
     // Called once at the start, so create things here
@@ -38,7 +39,6 @@ bool MainGame::OnUserDestroy()
 
 void MainGame::Update(float fElapsedTime)
 {
-
     // update player
     if (GetKey(olc::D).bHeld) // turn left
     {
@@ -69,9 +69,6 @@ void MainGame::Update(float fElapsedTime)
         m_player.m_state.x -= cosf(m_player.m_state.facing) * m_player.m_state.speed * fElapsedTime;
         m_player.m_state.y -= sinf(m_player.m_state.facing) * m_player.m_state.speed * fElapsedTime;
     }
-
-    
-
 }
 
 void MainGame::Draw()
@@ -92,29 +89,65 @@ void MainGame::Draw()
 
 /*
     Client msg buffer:
-    uint8: type | uint16: id | uint32: data
+    uint8: type | uint8: id | uint32: data
 */
-std::string MainGame::ComposeMessage(NetworkLib::ClientMessageType type)
+boost::asio::mutable_buffer MainGame::ComposeMessage(NetworkLib::ClientMessageType type)
 {  
-    std::string l_msg;
+    boost::asio::mutable_buffer ret;
+    uint8 l_clientPackage[NetworkBufferSize];
 
     switch (type)
     {
     case NetworkLib::ClientMessageType::Join:
-        l_msg.append("Join");
+        
+        
+        l_clientPackage[0] = (uint8)NetworkLib::ClientMessageType::Join;
+        ret = boost::asio::buffer(l_clientPackage);
+
         break;
     case NetworkLib::ClientMessageType::Leave:
-        l_msg.append("Leave");
+
+        l_clientPackage[0] = (uint8)NetworkLib::ClientMessageType::Leave;
+        ret = boost::asio::buffer(l_clientPackage);
         break;
     case NetworkLib::ClientMessageType::Input:
-        l_msg.append("Input");
-        break;
 
+        m_player.WriteInputPacket(l_clientPackage);
+        std::cout << l_clientPackage << std::endl;
+        ret = boost::asio::buffer(l_clientPackage);
+        /*
+        // Create client package and init index
+        uint8 index = 0;
+        std::array<uint8, NetworkBufferSize> l_clientPackage;
+        // add message type
+        l_clientPackage[index] = (uint8)NetworkLib::ClientMessageType::Join;
+        index += sizeof(uint8);
+        // add player id
+        l_clientPackage[index] = m_player.m_id;
+        index += sizeof(m_player.m_id);
+        // add input structure
+        uint8 packed_input = (uint8)m_player.m_input.up ? 1 : 0 |
+            (uint8)m_player.m_input.down ? 1 << 1 : 0 |
+            (uint8)m_player.m_input.left ? 1 << 2 : 0 |
+            (uint8)m_player.m_input.right ? 1 << 3 : 0;
+        l_clientPackage[index] = packed_input;
+        index += sizeof(packed_input);
+        // add position
+        l_clientPackage[index] = m_player.m_state.x;
+        index += sizeof(m_player.m_state.x);
+        l_clientPackage[index] = m_player.m_state.y;
+        index += sizeof(m_player.m_state.y);
+        // add facing
+        l_clientPackage[index] = m_player.m_state.facing;
+        index += sizeof(m_player.m_state.facing);
+        */
+        
+        break;
     default:
         break;
     }
-
-    return l_msg;
+    std::cout << ret.data() << std::endl;
+    return ret;
 }
 
 
