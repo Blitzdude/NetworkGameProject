@@ -1,73 +1,38 @@
-#pragma once
 #include <iostream>
-#include <utility>
 
-
+#pragma once
 namespace Log {
-
-
 // Empty function prototypes to be replaced with your implementations
-inline void Debug(void){
-    std::cout << std::endl;
-}
 
-template <typename T> 
-inline void Debug(const T& t) {
-    std::cout << t << std::endl;
-}
+inline void Debug() {std::cout << std::endl;}
 
-template<typename H, typename... T> 
-inline void Debug(H h, T... args) {
-    std::cout << h << ", ";
+template<typename T, typename... Ts> 
+inline void Debug(const T& t, const Ts&... args) {
+    std::cout << t << ", ";
     Debug(args...);
 };
 
- inline void Info(void) {
-    std::cout << std::endl;
-}
+inline void Info() { std::cout << std::endl; }
 
-
- template <typename T>
- inline void Info(const T& t) {
-     std::cout << t << std::endl;
- }
-
-
-template<typename H, typename... T>
-inline void Info(H h, T... args) {
-    std::cout << h << std::endl;
+template<typename T, typename... Ts>
+inline void Info(const T& t, const Ts&... args) {
+    std::cout << t << ", ";
     Info(args...);
 };
 
- inline void Warning(void) {
-    std::cout << std::endl;
-}
+inline void Warning() { std::cout << std::endl; }
 
-
- template <typename T>
- inline void Warning(const T& t) {
-     std::cout << t << std::endl;
- }
-
-
-template<typename H, typename... T>
-inline void Warning(H h, T... args) {
-    std::cout << h << std::endl;
+template<typename T, typename... Ts>
+inline void Warning(const T& t, const Ts&... args) {
+    std::cout << t << ", ";
     Warning(args...);
 };
 
- inline void Error(void) {
-    std::cout << std::endl;
-}
+inline void Error() { std::cout << std::endl; }
 
- template <typename T>
- inline void Error(const T& t) {
-     std::cout << t << std::endl;
- }
-
-template<typename H, typename... T>
-inline void Error(H h, T... args) {
-    std::cout << h << std::endl;
+template<typename T, typename... Ts> 
+inline void Error(const T& t, const Ts&... args) {
+    std::cout << t << ", ";
     Error(args...);
 };
 }

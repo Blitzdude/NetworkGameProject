@@ -1,6 +1,7 @@
 #include "mainGame.h"
 #include <boost/asio.hpp>
 #include <NetworkLib/Constants.h>
+#include <NetworkLib/Log.h>
 bool MainGame::OnUserCreate() 
 {
     // Called once at the start, so create things here
@@ -39,31 +40,33 @@ bool MainGame::OnUserDestroy()
 
 void MainGame::Update(float fElapsedTime)
 {
+    m_player.m_input.up = false;
+    m_player.m_input.down = false;
+    m_player.m_input.left = false;
+    m_player.m_input.right = false;
+
+
     // update player
     if (GetKey(olc::D).bHeld) // turn left
     {
-        m_player.m_input.right = false;
         m_player.m_input.left = true;
         m_player.m_state.facing += 1.0f * fElapsedTime;
     }
     else if (GetKey(olc::A).bHeld) // turn right
     {
         m_player.m_input.right = true;
-        m_player.m_input.left = false;
         m_player.m_state.facing -= 1.0f * fElapsedTime;
     }
     if (GetKey(olc::W).bHeld) // forward
     {
         m_player.m_input.up = true;
-        m_player.m_input.down = false;
-
+        
         m_player.m_state.x += cosf(m_player.m_state.facing) * m_player.m_state.speed * fElapsedTime;
         m_player.m_state.y += sinf(m_player.m_state.facing) * m_player.m_state.speed * fElapsedTime;
 
     }
     else if (GetKey(olc::S).bHeld) // back
     {
-        m_player.m_input.up = false;
         m_player.m_input.down = true;
 
         m_player.m_state.x -= cosf(m_player.m_state.facing) * m_player.m_state.speed * fElapsedTime;
@@ -84,7 +87,6 @@ void MainGame::Draw()
     DrawLine(m_player.m_state.x, m_player.m_state.y,
         m_player.m_state.x + cosf(l_facing) * 10.0f,
         m_player.m_state.y + sinf(l_facing) * 10.0f, olc::MAGENTA);
-
 }
 
 /*
@@ -113,44 +115,15 @@ boost::asio::mutable_buffer MainGame::ComposeMessage(NetworkLib::ClientMessageTy
     case NetworkLib::ClientMessageType::Input:
 
         m_player.WriteInputPacket(l_clientPackage);
-        std::cout << l_clientPackage << std::endl;
         ret = boost::asio::buffer(l_clientPackage);
-        /*
-        // Create client package and init index
-        uint8 index = 0;
-        std::array<uint8, NetworkBufferSize> l_clientPackage;
-        // add message type
-        l_clientPackage[index] = (uint8)NetworkLib::ClientMessageType::Join;
-        index += sizeof(uint8);
-        // add player id
-        l_clientPackage[index] = m_player.m_id;
-        index += sizeof(m_player.m_id);
-        // add input structure
-        uint8 packed_input = (uint8)m_player.m_input.up ? 1 : 0 |
-            (uint8)m_player.m_input.down ? 1 << 1 : 0 |
-            (uint8)m_player.m_input.left ? 1 << 2 : 0 |
-            (uint8)m_player.m_input.right ? 1 << 3 : 0;
-        l_clientPackage[index] = packed_input;
-        index += sizeof(packed_input);
-        // add position
-        l_clientPackage[index] = m_player.m_state.x;
-        index += sizeof(m_player.m_state.x);
-        l_clientPackage[index] = m_player.m_state.y;
-        index += sizeof(m_player.m_state.y);
-        // add facing
-        l_clientPackage[index] = m_player.m_state.facing;
-        index += sizeof(m_player.m_state.facing);
-        */
         
         break;
     default:
         break;
     }
-    std::cout << ret.data() << std::endl;
+    Log::Debug(ret.data());
     return ret;
 }
-
-
 
 void MainGame::SendMessageToServer(std::string p_msg)
 {

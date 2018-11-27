@@ -3,9 +3,10 @@
 #include <NetworkLib/Server.h>
 #include <NetworkLib/Messages.h>
 #include <NetworkLib/Log.h>
+#include <NetworkLib/Statistics.h>
+
 
 boost::asio::mutable_buffer ComposeMessage(NetworkLib::ServerMessageType type);
-
 
 class GameManager
 {
@@ -18,8 +19,6 @@ private:
 
 };
 
-
-
 int main(int argc, char* argv[])
 {
     NetworkLib::Server l_server(8080);
@@ -27,48 +26,48 @@ int main(int argc, char* argv[])
     bool isRunning = true;
     while (isRunning)
     {
-        if (l_server.GetClientCount() > 0)
+        while (l_server.HasMessages())
         {
-            while (l_server.HasMessages())
+            auto l_msg = l_server.PopMessage();
+            
+            auto l_type = 
+                (NetworkLib::ClientMessageType)l_msg.first[0];
+            boost::asio::mutable_buffer l_toClient;
+            Log::Debug(l_msg.first, " ", (uint8)l_type);
+
+            switch (l_type)
             {
-                auto l_msg = l_server.PopMessage();
-                
-                auto l_type = 
-                    (NetworkLib::ClientMessageType)l_msg.first[0];
-                Log::Debug(l_type);
-                boost::asio::mutable_buffer l_toClient;
-                switch (l_type)
+            case NetworkLib::ClientMessageType::Join:
+            Log::Info("Join message received");
+                if (l_gm.m_clientIds.size() < TOD_MAX_CLIENTS)
                 {
-                case NetworkLib::ClientMessageType::Join:
-                    if (l_gm.m_clientIds.size() < TOD_MAX_CLIENTS)
-                    {
-                        l_gm.m_clientIds.emplace_back(l_msg.second);
-                        l_toClient = 
-                            ComposeMessage(NetworkLib::ServerMessageType::Accept);
-                    }
-                    else
-                    {
-                        l_toClient = 
-                            ComposeMessage(NetworkLib::ServerMessageType::Reject);
-                    }
-                    l_server.SendToClient(l_toClient, l_msg.second);
-
-                    break;
-                case NetworkLib::ClientMessageType::Leave:
-                    // Remove client from clients list
-                    l_gm.m_clientIds.remove_if([&l_msg](uint32_t n){return l_msg.second;});
-                    break;
-                case NetworkLib::ClientMessageType::Input:
+                    l_gm.m_clientIds.emplace_back(l_msg.second);
                     l_toClient = 
-                        ComposeMessage(NetworkLib::ServerMessageType::State);
-                    l_server.SendToAll(l_toClient);
-                    break;
-                default:
-                    break;
+                        ComposeMessage(NetworkLib::ServerMessageType::Accept);
                 }
+                else
+                {
+                    l_toClient = 
+                        ComposeMessage(NetworkLib::ServerMessageType::Reject);
+                }
+                l_server.SendToClient(l_toClient, l_msg.second);
 
-
-
+                break;
+            case NetworkLib::ClientMessageType::Leave:
+                Log::Info("Leave message received");
+                // Remove client from clients list
+                l_gm.m_clientIds.remove_if([&l_msg](uint32_t n){return l_msg.second;});
+                break;
+            case NetworkLib::ClientMessageType::Input:
+                Log::Info("Input message received");
+                l_toClient = 
+                    ComposeMessage(NetworkLib::ServerMessageType::State);
+                l_server.SendToAll(l_toClient);
+                break;
+            default:
+                Log::Debug("Package doesn't correspond to any type");
+                Log::Debug(l_server.GetStatistics().GetReceivedMessages() );
+                break;
             }
         }
     }
