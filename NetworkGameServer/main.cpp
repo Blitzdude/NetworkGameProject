@@ -4,7 +4,8 @@
 #include <NetworkLib/Messages.h>
 #include <NetworkLib/Log.h>
 #include <NetworkLib/Statistics.h>
-
+#include <boost/archive/text_iarchive.hpp>
+#include <boost/archive/text_oarchive.hpp>
 
 boost::asio::mutable_buffer ComposeMessage(NetworkLib::ServerMessageType type);
 
@@ -15,25 +16,32 @@ public:
     ~GameManager(){};
 
     std::list<uint32_t> m_clientIds;
-private:
 
+
+private:
+    
 };
 
 int main(int argc, char* argv[])
 {
     NetworkLib::Server l_server(8080);
+
+    boost:
     GameManager l_gm;
+
     bool isRunning = true;
     while (isRunning)
     {
         while (l_server.HasMessages())
         {
+            //TODO istringstream -> archive -> struct?
             auto l_msg = l_server.PopMessage();
-            
-            auto l_type = 
-                (NetworkLib::ClientMessageType)l_msg.first[0];
+
+            NetworkLib::ClientMessageType l_type = 
+                static_cast<NetworkLib::ClientMessageType>(l_msg.first[0]);
+
             boost::asio::mutable_buffer l_toClient;
-            Log::Debug(l_msg.first, " ", (uint8)l_type);
+            Log::Debug(l_msg.first);
 
             switch (l_type)
             {
@@ -59,7 +67,9 @@ int main(int argc, char* argv[])
                 l_gm.m_clientIds.remove_if([&l_msg](uint32_t n){return l_msg.second;});
                 break;
             case NetworkLib::ClientMessageType::Input:
-                Log::Info("Input message received");
+                Log::Info("Input message received", (uint32)l_msg.first[1]);
+                
+
                 l_toClient = 
                     ComposeMessage(NetworkLib::ServerMessageType::State);
                 l_server.SendToAll(l_toClient);

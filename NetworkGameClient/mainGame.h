@@ -27,11 +27,12 @@ private:
     void Draw();
 
     
-    boost::asio::mutable_buffer ComposeMessage(NetworkLib::ClientMessageType type);
-    void SendMessageToServer(std::string p_msg);
+    uint8* ComposeMessage(NetworkLib::ClientMessageType type);
 
     NetworkLib::Client m_connection;
 
     Player m_player;
+
+    long double m_totalTime = 0.0;
 
 };

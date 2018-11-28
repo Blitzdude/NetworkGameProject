@@ -11,20 +11,38 @@ bool MainGame::OnUserCreate()
     m_player.m_state.facing = 0.0f;
     m_player.m_state.speed = 30.0f;
 
-    m_connection.Send(ComposeMessage(NetworkLib::ClientMessageType::Join));
+    auto msg = ComposeMessage(NetworkLib::ClientMessageType::Join);
+    auto buf = boost::asio::buffer(msg, sizeof(128));
+    m_connection.Send(buf);
 
     return true;
 }
 
 bool MainGame::OnUserUpdate(float fElapsedTime) 
 {
+    m_totalTime += fElapsedTime;
     // called once per frame
+    std::ostringstream ss;
+    boost::archive::text_oarchive l_archive(ss);
+
     Clear(olc::BLACK);
+
+    if (m_connection.HasMessages())
+        m_connection.PopMessage();
 
     Update(fElapsedTime);
     if (m_player.HasInput())
     {
-        m_connection.Send(ComposeMessage(NetworkLib::ClientMessageType::Input));
+        l_archive << m_player;
+        m_connection.Send(ss.str());
+         
+
+
+        /*
+        auto msg = ComposeMessage(NetworkLib::ClientMessageType::Input);
+        auto buf = boost::asio::buffer(msg, 128);
+        m_connection.Send(buf);
+        */
     }
     Draw();
 
@@ -33,7 +51,9 @@ bool MainGame::OnUserUpdate(float fElapsedTime)
 
 bool MainGame::OnUserDestroy()
 {
-    m_connection.Send(ComposeMessage(NetworkLib::ClientMessageType::Leave));
+    auto msg = ComposeMessage(NetworkLib::ClientMessageType::Leave);
+    auto buf = boost::asio::buffer(msg, 128);
+    m_connection.Send(buf);
 
     return true;
 }
@@ -52,7 +72,7 @@ void MainGame::Update(float fElapsedTime)
         m_player.m_input.left = true;
         m_player.m_state.facing += 1.0f * fElapsedTime;
     }
-    else if (GetKey(olc::A).bHeld) // turn right
+    if (GetKey(olc::A).bHeld) // turn right
     {
         m_player.m_input.right = true;
         m_player.m_state.facing -= 1.0f * fElapsedTime;
@@ -65,7 +85,7 @@ void MainGame::Update(float fElapsedTime)
         m_player.m_state.y += sinf(m_player.m_state.facing) * m_player.m_state.speed * fElapsedTime;
 
     }
-    else if (GetKey(olc::S).bHeld) // back
+    if (GetKey(olc::S).bHeld) // back
     {
         m_player.m_input.down = true;
 
@@ -93,40 +113,33 @@ void MainGame::Draw()
     Client msg buffer:
     uint8: type | uint8: id | uint32: data
 */
-boost::asio::mutable_buffer MainGame::ComposeMessage(NetworkLib::ClientMessageType type)
+uint8* MainGame::ComposeMessage(NetworkLib::ClientMessageType type)
 {  
-    boost::asio::mutable_buffer ret;
-    uint8 l_clientPackage[NetworkBufferSize];
-
+    //std::string ret;
+    //ret.resize(256);
+    uint8 ret[128];
     switch (type)
     {
     case NetworkLib::ClientMessageType::Join:
-        
-        
-        l_clientPackage[0] = (uint8)NetworkLib::ClientMessageType::Join;
-        ret = boost::asio::buffer(l_clientPackage);
-
+        ret[0] = static_cast<uint8>(NetworkLib::ClientMessageType::Join);
         break;
     case NetworkLib::ClientMessageType::Leave:
-
-        l_clientPackage[0] = (uint8)NetworkLib::ClientMessageType::Leave;
-        ret = boost::asio::buffer(l_clientPackage);
+        ret[0] = static_cast<uint8>(NetworkLib::ClientMessageType::Leave);
         break;
     case NetworkLib::ClientMessageType::Input:
+        ret[0] = static_cast<uint8>(NetworkLib::ClientMessageType::Input);
+        /*
+        packed_input =   m_player.m_input.up ? 1U : 0 |
+                         m_player.m_input.down ? (1U << 1) : (0U << 1) |
+                         m_player.m_input.left ? (1U << 2) : (0U << 2) |
+                         m_player.m_input.right ? (1U << 3): (0U << 3) ;
 
-        m_player.WriteInputPacket(l_clientPackage);
-        ret = boost::asio::buffer(l_clientPackage);
-        
+        */
+        Log::Debug(ret);
         break;
     default:
         break;
     }
-    Log::Debug(ret.data());
+    
     return ret;
 }
-
-void MainGame::SendMessageToServer(std::string p_msg)
-{
-    m_connection.Send(p_msg);
-}
-

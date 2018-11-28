@@ -4,20 +4,17 @@
 
 namespace NetworkLib
 {
-
 enum class ClientMessageType : uint8
 {
-    Join,
-    Leave,
-    Input
+    Join = 'J',
+    Leave = 'L',
+    Input = 'I'
 };
-
 enum class ServerMessageType : uint8
 {
-    Accept,
-    Reject,
-    State
+    Accept  = 'A',
+    Reject  = 'R',
+    State   = 'S'
 };
-
 };
 
