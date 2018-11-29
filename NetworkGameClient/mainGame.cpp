@@ -11,9 +11,12 @@ bool MainGame::OnUserCreate()
     m_player.m_state.facing = 0.0f;
     m_player.m_state.speed = 30.0f;
 
-    auto msg = ComposeMessage(NetworkLib::ClientMessageType::Join);
-    auto buf = boost::asio::buffer(msg, sizeof(128));
-    m_connection.Send(buf);
+    std::ostringstream oss;
+    boost::archive::text_oarchive l_archive(oss);
+
+    l_archive << NetworkLib::ClientMessageType::Join;
+
+    m_connection.Send(oss.str());
 
     return true;
 }
@@ -21,21 +24,28 @@ bool MainGame::OnUserCreate()
 bool MainGame::OnUserUpdate(float fElapsedTime) 
 {
     m_totalTime += fElapsedTime;
+    m_player.m_playerTime = m_totalTime;
     // called once per frame
-    std::ostringstream ss;
-    boost::archive::text_oarchive l_archive(ss);
+    std::ostringstream oss;
+    boost::archive::text_oarchive l_oar(oss);
 
     Clear(olc::BLACK);
 
     if (m_connection.HasMessages())
         m_connection.PopMessage();
 
-    Update(fElapsedTime);
+     Update(fElapsedTime);
     if (m_player.HasInput())
     {
+
+        m_connection.Send(m_player.SerializeInput());
+        
+
+        /*
         l_archive << m_player;
         m_connection.Send(ss.str());
-         
+        */
+        
 
 
         /*
@@ -44,6 +54,41 @@ bool MainGame::OnUserUpdate(float fElapsedTime)
         m_connection.Send(buf);
         */
     }
+    while (m_connection.HasMessages())
+    {
+        auto l_msg = m_connection.PopMessage();
+
+        std::istringstream iss(l_msg);
+        boost::archive::text_iarchive iar(iss);
+        // for network pacakges
+        uint32 numPlayers;
+        PlayerState l_myState;
+
+        NetworkLib::ServerMessageType type;
+        iar >> type;
+        switch (type)
+        {
+        case NetworkLib::ServerMessageType::Accept:
+            Log::Debug("We got in!");
+            break;
+        case NetworkLib::ServerMessageType::Reject:
+            Log::Debug("We didn't get accepted...");
+            break;
+        case NetworkLib::ServerMessageType::State:
+            Log::Debug("New State!");
+            iar >> numPlayers;
+            iar >> l_myState;
+            Log::Debug(numPlayers, l_myState.x, l_myState.y, l_myState.facing, l_myState.speed);
+            
+            m_player.m_state = l_myState;
+            
+            break;
+        default:
+            break;
+        }
+    }
+
+
     Draw();
 
     return true;

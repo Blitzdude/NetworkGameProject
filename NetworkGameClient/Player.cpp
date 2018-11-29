@@ -1,4 +1,5 @@
 #include "Player.h"
+#include <sstream>
 #include <NetworkLib/Messages.h>
 
 Player::Player()
@@ -15,6 +16,18 @@ Player::~Player()
 bool32 Player::HasInput()
 {
     return (m_input.up || m_input.down || m_input.left || m_input.right);
+}
+
+std::string Player::SerializeInput()
+{
+
+    std::ostringstream oss;
+    boost::archive::text_oarchive l_archive(oss);
+    
+    //  type: id: input: time
+    l_archive << (uint8)NetworkLib::ClientMessageType::Input << m_id << m_input << m_playerTime;
+
+    return oss.str();
 }
 
 namespace boost {

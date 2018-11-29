@@ -7,6 +7,7 @@
 #include <boost/archive/text_oarchive.hpp>
 
 
+
 class Player
 {
 private:
@@ -27,6 +28,8 @@ public:
 
     bool32 HasInput();
 
+    // Serialize input
+    std::string SerializeInput();
 private:
 public:
     PlayerState m_state;

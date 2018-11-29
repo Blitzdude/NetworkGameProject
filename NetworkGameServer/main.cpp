@@ -3,6 +3,7 @@
 #include <NetworkLib/Server.h>
 #include <NetworkLib/Messages.h>
 #include <NetworkLib/Log.h>
+#include <common/tagOrDieCommon.h>
 #include <NetworkLib/Statistics.h>
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/archive/text_oarchive.hpp>
@@ -16,8 +17,15 @@ public:
     ~GameManager(){};
 
     std::list<uint32_t> m_clientIds;
+    std::vector<PlayerInput> m_inputs;
+    uint32 m_numPlayer = 0;
+    //std::map<uint32, PlayerState> m_states;
+    PlayerState m_playerState = {0.0f, 0.0f, 0.0f, 10.0f};
 
+    std::string SerializeStatePackage();
 
+    void UpdateState(const PlayerInput& input);
+    
 private:
     
 };
@@ -25,10 +33,9 @@ private:
 int main(int argc, char* argv[])
 {
     NetworkLib::Server l_server(8080);
-
-    boost:
     GameManager l_gm;
 
+    
     bool isRunning = true;
     while (isRunning)
     {
@@ -36,52 +43,61 @@ int main(int argc, char* argv[])
         {
             //TODO istringstream -> archive -> struct?
             auto l_msg = l_server.PopMessage();
+            Log::Debug(l_msg.first, "size; ", l_msg.second);
 
-            NetworkLib::ClientMessageType l_type = 
-                static_cast<NetworkLib::ClientMessageType>(l_msg.first[0]);
+            std::istringstream iss(l_msg.first);    
+            boost::archive::text_iarchive iar(iss);
 
-            boost::asio::mutable_buffer l_toClient;
-            Log::Debug(l_msg.first);
+            uint8 id;
+            PlayerInput input;
+            long double time;
+            PlayerState l_np = {0.0f,0.0f,0.0f,0.0f};
 
-            switch (l_type)
+
+            NetworkLib::ClientMessageType type;
+            iar >> type;
+            switch (type)
             {
             case NetworkLib::ClientMessageType::Join:
-            Log::Info("Join message received");
-                if (l_gm.m_clientIds.size() < TOD_MAX_CLIENTS)
-                {
-                    l_gm.m_clientIds.emplace_back(l_msg.second);
-                    l_toClient = 
-                        ComposeMessage(NetworkLib::ServerMessageType::Accept);
-                }
-                else
-                {
-                    l_toClient = 
-                        ComposeMessage(NetworkLib::ServerMessageType::Reject);
-                }
-                l_server.SendToClient(l_toClient, l_msg.second);
-
+                Log::Debug("Player Joined");
+                /*
+                l_gm.m_states.insert(
+                    std::pair<uint32, PlayerState>(l_gm.m_numPlayer,l_np));
+                */
+                l_np = { 0.0f,0.0f,0.0f,0.0f };
+                l_gm.m_numPlayer++;
                 break;
             case NetworkLib::ClientMessageType::Leave:
-                Log::Info("Leave message received");
-                // Remove client from clients list
-                l_gm.m_clientIds.remove_if([&l_msg](uint32_t n){return l_msg.second;});
                 break;
             case NetworkLib::ClientMessageType::Input:
-                Log::Info("Input message received", (uint32)l_msg.first[1]);
-                
+                Log::Debug("Player input get!");
+                iar >> id;
+                iar >> input;
+                iar >> time;
+                Log::Debug("Input:", input.up, input.down, input.left, input.right);
 
-                l_toClient = 
-                    ComposeMessage(NetworkLib::ServerMessageType::State);
-                l_server.SendToAll(l_toClient);
+                // Send server package to client
+                // number of clients
+                l_gm.UpdateState(input);
+                l_server.SendToAll(l_gm.SerializeStatePackage());
+
                 break;
             default:
-                Log::Debug("Package doesn't correspond to any type");
-                Log::Debug(l_server.GetStatistics().GetReceivedMessages() );
                 break;
             }
+
+            // Average byte size of message
+            Log::Info("Average bytes: "
+                , l_server.GetStatistics().GetReceivedBytes()
+                , "//", l_server.GetStatistics().GetReceivedMessages()
+                , "=", l_server.GetStatistics().GetReceivedBytes()
+                / l_server.GetStatistics().GetReceivedMessages());
+
         }
     }
 
+    std::cin.get();
+    return 0;
 }
 
 boost::asio::mutable_buffer ComposeMessage(NetworkLib::ServerMessageType type)
@@ -110,4 +126,43 @@ boost::asio::mutable_buffer ComposeMessage(NetworkLib::ServerMessageType type)
         break;
     }
     return ret;
+}
+
+std::string GameManager::SerializeStatePackage()
+{
+    std::ostringstream oss;
+    boost::archive::text_oarchive l_archive(oss);
+    // msgType : numPlayrs : Playerstate x numplayers
+    l_archive << NetworkLib::ServerMessageType::State << m_numPlayer
+        << m_playerState;
+    
+
+    return oss.str();
+}
+
+void GameManager::UpdateState(const PlayerInput& input)
+{
+    const float fElapsedTime = 0.1f;
+
+    // update player
+    if (input.left) // turn left
+    {
+        m_playerState.facing += 1.0f * fElapsedTime;
+    }
+    if (input.right) // turn right
+    {
+        m_playerState.facing -= 1.0f * fElapsedTime;
+    }
+    if (input.up) // forward
+    {
+
+        m_playerState.x += cosf(m_playerState.facing) * m_playerState.speed * fElapsedTime;
+        m_playerState.y += sinf(m_playerState.facing) * m_playerState.speed * fElapsedTime;
+
+    }
+    if (input.down) // back
+    {
+        m_playerState.x -= cosf(m_playerState.facing) * m_playerState.speed * fElapsedTime;
+        m_playerState.y -= sinf(m_playerState.facing) * m_playerState.speed * fElapsedTime;
+    }
 }
