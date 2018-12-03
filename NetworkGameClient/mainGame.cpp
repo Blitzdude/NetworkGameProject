@@ -4,7 +4,6 @@
 #include <NetworkLib/Log.h>
 bool MainGame::OnUserCreate() 
 {
-    // Called once at the start, so create things here
     // Create player - Values are used with reckless abandon, don't worry about it
     m_player.m_state.x = 100.0f;
     m_player.m_state.y = 100.0f;
@@ -13,7 +12,7 @@ bool MainGame::OnUserCreate()
 
     std::ostringstream oss;
     boost::archive::text_oarchive l_archive(oss);
-
+    // Send a Join Request to server
     l_archive << NetworkLib::ClientMessageType::Join;
 
     m_connection.Send(oss.str());
@@ -37,22 +36,7 @@ bool MainGame::OnUserUpdate(float fElapsedTime)
      Update(fElapsedTime);
     if (m_player.HasInput())
     {
-
         m_connection.Send(m_player.SerializeInput());
-        
-
-        /*
-        l_archive << m_player;
-        m_connection.Send(ss.str());
-        */
-        
-
-
-        /*
-        auto msg = ComposeMessage(NetworkLib::ClientMessageType::Input);
-        auto buf = boost::asio::buffer(msg, 128);
-        m_connection.Send(buf);
-        */
     }
     while (m_connection.HasMessages())
     {
@@ -62,26 +46,31 @@ bool MainGame::OnUserUpdate(float fElapsedTime)
         boost::archive::text_iarchive iar(iss);
         // for network pacakges
         uint32 numPlayers;
-        PlayerState l_myState;
+        PlayerState l_state;
+        std::vector<PlayerState> l_playerStates;
 
         NetworkLib::ServerMessageType type;
         iar >> type;
         switch (type)
         {
         case NetworkLib::ServerMessageType::Accept:
-            Log::Debug("We got in!");
+            Log::Debug("Joining game");
             break;
         case NetworkLib::ServerMessageType::Reject:
-            Log::Debug("We didn't get accepted...");
+            Log::Debug("Server full... Join failed");
             break;
         case NetworkLib::ServerMessageType::State:
             Log::Debug("New State!");
             iar >> numPlayers;
-            iar >> l_myState;
-            Log::Debug(numPlayers, l_myState.x, l_myState.y, l_myState.facing, l_myState.speed);
-            
-            m_player.m_state = l_myState;
-            
+            PlayerState l_state;
+            for (int i = 0; i < numPlayers ; i++)
+            {
+                iar >> l_state;
+
+                Log::Debug(numPlayers, l_state.x, l_state.y, l_state.facing, l_state.speed);
+                
+            }
+            m_player.m_state = l_state;
             break;
         default:
             break;
@@ -173,13 +162,7 @@ uint8* MainGame::ComposeMessage(NetworkLib::ClientMessageType type)
         break;
     case NetworkLib::ClientMessageType::Input:
         ret[0] = static_cast<uint8>(NetworkLib::ClientMessageType::Input);
-        /*
-        packed_input =   m_player.m_input.up ? 1U : 0 |
-                         m_player.m_input.down ? (1U << 1) : (0U << 1) |
-                         m_player.m_input.left ? (1U << 2) : (0U << 2) |
-                         m_player.m_input.right ? (1U << 3): (0U << 3) ;
-
-        */
+        
         Log::Debug(ret);
         break;
     default:

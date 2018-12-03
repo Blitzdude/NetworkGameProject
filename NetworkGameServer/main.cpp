@@ -8,7 +8,12 @@
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/archive/text_oarchive.hpp>
 
-boost::asio::mutable_buffer ComposeMessage(NetworkLib::ServerMessageType type);
+/*
+* TODO:
+* Multiple player states
+* Time synchronisation
+
+*/
 
 class GameManager
 {
@@ -16,15 +21,13 @@ public:
     GameManager(){};
     ~GameManager(){};
 
-    std::list<uint32_t> m_clientIds;
     std::vector<PlayerInput> m_inputs;
     uint32 m_numPlayer = 0;
-    //std::map<uint32, PlayerState> m_states;
-    PlayerState m_playerState = {0.0f, 0.0f, 0.0f, 10.0f};
+    std::map<uint32, PlayerState> m_playerStates;
 
     std::string SerializeStatePackage();
 
-    void UpdateState(const PlayerInput& input);
+    void UpdateState(const PlayerInput& input, int playerId);
     
 private:
     
@@ -41,7 +44,6 @@ int main(int argc, char* argv[])
     {
         while (l_server.HasMessages())
         {
-            //TODO istringstream -> archive -> struct?
             auto l_msg = l_server.PopMessage();
             Log::Debug(l_msg.first, "size; ", l_msg.second);
 
@@ -51,8 +53,7 @@ int main(int argc, char* argv[])
             uint8 id;
             PlayerInput input;
             long double time;
-            PlayerState l_np = {0.0f,0.0f,0.0f,0.0f};
-
+            PlayerState l_np;
 
             NetworkLib::ClientMessageType type;
             iar >> type;
@@ -60,14 +61,16 @@ int main(int argc, char* argv[])
             {
             case NetworkLib::ClientMessageType::Join:
                 Log::Debug("Player Joined");
-                /*
-                l_gm.m_states.insert(
-                    std::pair<uint32, PlayerState>(l_gm.m_numPlayer,l_np));
-                */
-                l_np = { 0.0f,0.0f,0.0f,0.0f };
+                // add player to list of players
+                l_np = { 30.0f,30.0f,0.0f, 10.0f };
+                l_gm.m_playerStates.emplace(l_gm.m_numPlayer++, l_np);
                 l_gm.m_numPlayer++;
+                // send player their starting position
+                l_server.SendToAll(l_gm.SerializeStatePackage());
+
                 break;
             case NetworkLib::ClientMessageType::Leave:
+                // Remove the player from player states
                 break;
             case NetworkLib::ClientMessageType::Input:
                 Log::Debug("Player input get!");
@@ -78,7 +81,7 @@ int main(int argc, char* argv[])
 
                 // Send server package to client
                 // number of clients
-                l_gm.UpdateState(input);
+                l_gm.UpdateState(input, id);
                 l_server.SendToAll(l_gm.SerializeStatePackage());
 
                 break;
@@ -100,69 +103,43 @@ int main(int argc, char* argv[])
     return 0;
 }
 
-boost::asio::mutable_buffer ComposeMessage(NetworkLib::ServerMessageType type)
-{
-    boost::asio::mutable_buffer ret;
-    uint8 msg[NetworkBufferSize];
-    switch (type)
-    {
-    case NetworkLib::ServerMessageType::Accept:
-        // WriteAcceptPackage
-        msg[0] = (uint8)NetworkLib::ServerMessageType::Accept;
-        msg[sizeof(uint8)] = (uint8)1;
-        ret = boost::asio::buffer(msg);
-        break;
-    case NetworkLib::ServerMessageType::Reject:
-        // WriteRejectPackage
-        msg[0] = (uint8)NetworkLib::ServerMessageType::Reject;
-        ret = boost::asio::buffer(msg);
-        break;
-    case NetworkLib::ServerMessageType::State:
-        // WriteStatePackage
-        msg[0] = (uint8)NetworkLib::ServerMessageType::State;
-        ret = boost::asio::buffer(msg);
-        break;
-    default:
-        break;
-    }
-    return ret;
-}
-
 std::string GameManager::SerializeStatePackage()
 {
     std::ostringstream oss;
     boost::archive::text_oarchive l_archive(oss);
     // msgType : numPlayrs : Playerstate x numplayers
-    l_archive << NetworkLib::ServerMessageType::State << m_numPlayer
-        << m_playerState;
-    
+    l_archive << NetworkLib::ServerMessageType::State << m_numPlayer;
+    for (auto itr = m_playerStates.begin(); itr != m_playerStates.end(); itr++)
+    {
+       l_archive << itr;
+    }
 
     return oss.str();
 }
 
-void GameManager::UpdateState(const PlayerInput& input)
+void GameManager::UpdateState(const PlayerInput& input, int playerId)
 {
-    const float fElapsedTime = 0.1f;
+    const float fElapsedTime = 0.01f;
 
     // update player
     if (input.left) // turn left
     {
-        m_playerState.facing += 1.0f * fElapsedTime;
+        m_playerStates[playerId].facing += 1.0f * fElapsedTime;
     }
     if (input.right) // turn right
     {
-        m_playerState.facing -= 1.0f * fElapsedTime;
+        m_playerStates[playerId].facing -= 1.0f * fElapsedTime;
     }
     if (input.up) // forward
     {
 
-        m_playerState.x += cosf(m_playerState.facing) * m_playerState.speed * fElapsedTime;
-        m_playerState.y += sinf(m_playerState.facing) * m_playerState.speed * fElapsedTime;
+        m_playerStates[playerId].x += cosf(m_playerStates[playerId].facing) * m_playerStates[playerId].speed * fElapsedTime;
+        m_playerStates[playerId].y += sinf(m_playerStates[playerId].facing) * m_playerStates[playerId].speed * fElapsedTime;
 
     }
     if (input.down) // back
     {
-        m_playerState.x -= cosf(m_playerState.facing) * m_playerState.speed * fElapsedTime;
-        m_playerState.y -= sinf(m_playerState.facing) * m_playerState.speed * fElapsedTime;
+        m_playerStates[playerId].x -= cosf(m_playerStates[playerId].facing) * m_playerStates[playerId].speed * fElapsedTime;
+        m_playerStates[playerId].y -= sinf(m_playerStates[playerId].facing) * m_playerStates[playerId].speed * fElapsedTime;
     }
 }

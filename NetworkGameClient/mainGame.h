@@ -1,9 +1,9 @@
 #pragma once
 
+#include <boost/lexical_cast.hpp>
 #include <NetworkLib/Messages.h>
 #include <NetworkLib/Client.h>
 #include "olcPixelGameEngine.h"
-
 
 #include "Player.h"
 
@@ -16,6 +16,13 @@ public:
     {
         sAppName = "NetworkGameProgram";
     }
+    
+    MainGame(int argc, char* argv[])
+        : m_connection(argv[1], boost::lexical_cast<int>(argv[2]))
+    {
+        sAppName = "TagOrDie";
+    }
+    
 
 public:
     bool OnUserCreate() override;

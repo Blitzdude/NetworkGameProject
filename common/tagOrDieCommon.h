@@ -7,7 +7,10 @@
 
 struct PlayerInput
 {
-    bool32 up, down, left, right;
+    bool32 up;
+    bool32 down;
+    bool32 left;
+    bool32 right;
 };
 
 namespace boost {
@@ -20,7 +23,6 @@ void serialize(Archive & ar, PlayerInput & p, const unsigned int version)
     ar & p.down;
     ar & p.left;
     ar & p.right;
-
 }
 
 } // namespace serialization
