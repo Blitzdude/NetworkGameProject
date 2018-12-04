@@ -2,13 +2,25 @@
 #include <boost/asio.hpp>
 #include <NetworkLib/Constants.h>
 #include <NetworkLib/Log.h>
+
+/*
+* Tag Or Die - client
+* Client states:
+* - Joining
+* - Joined
+* - Game beginning
+* - Game running
+* - Game ended
+* - Disconnected
+* 
+*/
 bool MainGame::OnUserCreate() 
 {
     // Create player - Values are used with reckless abandon, don't worry about it
-    m_player.m_state.x = 100.0f;
-    m_player.m_state.y = 100.0f;
-    m_player.m_state.facing = 0.0f;
-    m_player.m_state.speed = 30.0f;
+    // m_player.m_state.x = 100.0f;
+    // m_player.m_state.y = 100.0f;
+    // m_player.m_state.facing = 0.0f;
+    // m_player.m_state.speed = 30.0f;
 
     std::ostringstream oss;
     boost::archive::text_oarchive l_archive(oss);
@@ -55,6 +67,8 @@ bool MainGame::OnUserUpdate(float fElapsedTime)
         {
         case NetworkLib::ServerMessageType::Accept:
             Log::Debug("Joining game");
+            iar >> l_state;
+            m_player.m_state = l_playerStates[0];
             break;
         case NetworkLib::ServerMessageType::Reject:
             Log::Debug("Server full... Join failed");
@@ -66,11 +80,13 @@ bool MainGame::OnUserUpdate(float fElapsedTime)
             for (int i = 0; i < numPlayers ; i++)
             {
                 iar >> l_state;
+                l_playerStates.push_back(l_state);
 
                 Log::Debug(numPlayers, l_state.x, l_state.y, l_state.facing, l_state.speed);
                 
             }
-            m_player.m_state = l_state;
+            // Get player id and do stuff accordingly
+
             break;
         default:
             break;
