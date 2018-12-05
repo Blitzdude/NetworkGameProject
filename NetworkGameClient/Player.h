@@ -1,6 +1,7 @@
 #pragma once
 
 #include <NetworkLib/Constants.h>
+#include <map>
 #include <NetworkLib/Messages.h>
 #include <common/tagOrDieCommon.h>
 #include <boost/archive/text_iarchive.hpp>
@@ -24,15 +25,23 @@ public:
     Player();
     ~Player();
 
-    bool32 HasInput();
+    bool HasInput();
 
     // Serialize input
     std::string SerializeInput();
+
+    // Returns the state with the largest tick number
+    const std::pair<uint32, PlayerState>& GetNewestState();
+    void InsertState(const PlayerState& state, uint32 tick);
+
 private:
 public:
-    PlayerState m_state;
+    
+    // map container with pairs of tickNumber-PlayerState, latest input should be the one with highest tick
+    std::map<uint32, PlayerState> m_states; 
     PlayerInput m_input;
-    uint8 m_id = 0;
+    PlayerInput m_previousInput;
+    uint32 m_id = 0;
 
-    long double m_playerTime;
+    float64 m_playerTime;
 };

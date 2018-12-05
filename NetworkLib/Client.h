@@ -3,9 +3,7 @@
 #include "Statistics.h"
 
 #include "LockedQueue.h"
-
 #include <boost/asio.hpp>
-
 #include <array>
 #include <thread>
 #include "IClient.h"

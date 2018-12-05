@@ -16,12 +16,6 @@
 */
 bool MainGame::OnUserCreate() 
 {
-    // Create player - Values are used with reckless abandon, don't worry about it
-    // m_player.m_state.x = 100.0f;
-    // m_player.m_state.y = 100.0f;
-    // m_player.m_state.facing = 0.0f;
-    // m_player.m_state.speed = 30.0f;
-
     std::ostringstream oss;
     boost::archive::text_oarchive l_archive(oss);
     // Send a Join Request to server
@@ -35,7 +29,11 @@ bool MainGame::OnUserCreate()
 bool MainGame::OnUserUpdate(float fElapsedTime) 
 {
     m_totalTime += fElapsedTime;
-    m_player.m_playerTime = m_totalTime;
+    m_totalTicks = GetCurrentTick();
+
+    Log::Debug(m_totalTicks, m_totalTime);
+
+
     // called once per frame
     std::ostringstream oss;
     boost::archive::text_oarchive l_oar(oss);
@@ -57,43 +55,61 @@ bool MainGame::OnUserUpdate(float fElapsedTime)
         std::istringstream iss(l_msg);
         boost::archive::text_iarchive iar(iss);
         // for network pacakges
-        uint32 numPlayers;
-        PlayerState l_state;
-        std::vector<PlayerState> l_playerStates;
+        std::vector<std::pair<uint32, PlayerState>> l_otherPlayerStates; // states of all the other players <id, State>
+        PlayerState l_localPlayerState; // state of the player according to server
 
+        
         NetworkLib::ServerMessageType type;
         iar >> type;
         switch (type)
         {
         case NetworkLib::ServerMessageType::Accept:
             Log::Debug("Joining game");
-            iar >> l_state;
-            m_player.m_state = l_playerStates[0];
+            l_localPlayerState; // state of the player according to server
+
+            iar >> l_localPlayerState;
+            m_player.m_state = l_localPlayerState;
             break;
         case NetworkLib::ServerMessageType::Reject:
             Log::Debug("Server full... Join failed");
             break;
         case NetworkLib::ServerMessageType::State:
             Log::Debug("New State!");
-            iar >> numPlayers;
-            PlayerState l_state;
-            for (int i = 0; i < numPlayers ; i++)
-            {
-                iar >> l_state;
-                l_playerStates.push_back(l_state);
 
-                Log::Debug(numPlayers, l_state.x, l_state.y, l_state.facing, l_state.speed);
-                
+            uint32 l_tickNumber;
+            uint32 l_clientTimestamp; // most recent time stamp server had from client at the time of writing this package
+            uint32 l_numberOfPlayers;
+            uint32 l_tempId;
+            PlayerState l_tempState; // for usage in for loop;
+
+
+            // Read the state package
+            // if server is ahead of us, set current tick to server tick and use it to calculate the time
+            
+            // record the localPlayers state and the states of other players
+            // Update the local and other players positions by fixing the historic buffer and interpolating between previous positions
+            iar >> l_numberOfPlayers;
+
+            for (int i = 0; i < l_numberOfPlayers; i++)
+            {
+                iar >> l_tempId;
+                iar >> l_tempState;
+
+                if (l_tempId == m_player.m_id)
+                {
+                    m_player.m_state = l_tempState;
+                }
+                else
+                {
+                    l_otherPlayerStates.push_back(std::make_pair(l_tempId,l_tempState));
+                }
             }
-            // Get player id and do stuff accordingly
 
             break;
         default:
             break;
         }
     }
-
-
     Draw();
 
     return true;
@@ -101,20 +117,20 @@ bool MainGame::OnUserUpdate(float fElapsedTime)
 
 bool MainGame::OnUserDestroy()
 {
-    auto msg = ComposeMessage(NetworkLib::ClientMessageType::Leave);
-    auto buf = boost::asio::buffer(msg, 128);
-    m_connection.Send(buf);
+    std::ostringstream oss;
+    boost::archive::text_oarchive l_archive(oss);
+    // Send a Join Request to server
+    l_archive << NetworkLib::ClientMessageType::Leave;
+
+    m_connection.Send(oss.str());
 
     return true;
 }
 
 void MainGame::Update(float fElapsedTime)
 {
-    m_player.m_input.up = false;
-    m_player.m_input.down = false;
-    m_player.m_input.left = false;
-    m_player.m_input.right = false;
-
+    m_player.m_previousInput = m_player.m_input;
+   
 
     // update player
     if (GetKey(olc::D).bHeld) // turn left
@@ -142,11 +158,11 @@ void MainGame::Update(float fElapsedTime)
         m_player.m_state.x -= cosf(m_player.m_state.facing) * m_player.m_state.speed * fElapsedTime;
         m_player.m_state.y -= sinf(m_player.m_state.facing) * m_player.m_state.speed * fElapsedTime;
     }
+
 }
 
 void MainGame::Draw()
 {
-
     float l_playerX = m_player.m_state.x;
     float l_playerY = m_player.m_state.y;
     float l_facing = m_player.m_state.facing;
@@ -159,31 +175,8 @@ void MainGame::Draw()
         m_player.m_state.y + sinf(l_facing) * 10.0f, olc::MAGENTA);
 }
 
-/*
-    Client msg buffer:
-    uint8: type | uint8: id | uint32: data
-*/
-uint8* MainGame::ComposeMessage(NetworkLib::ClientMessageType type)
-{  
-    //std::string ret;
-    //ret.resize(256);
-    uint8 ret[128];
-    switch (type)
-    {
-    case NetworkLib::ClientMessageType::Join:
-        ret[0] = static_cast<uint8>(NetworkLib::ClientMessageType::Join);
-        break;
-    case NetworkLib::ClientMessageType::Leave:
-        ret[0] = static_cast<uint8>(NetworkLib::ClientMessageType::Leave);
-        break;
-    case NetworkLib::ClientMessageType::Input:
-        ret[0] = static_cast<uint8>(NetworkLib::ClientMessageType::Input);
-        
-        Log::Debug(ret);
-        break;
-    default:
-        break;
-    }
-    
-    return ret;
+uint64 MainGame::GetCurrentTick()
+{
+    return static_cast<uint64>(m_totalTime * ticks_per_second); // static casting to stop compiler warning
 }
+

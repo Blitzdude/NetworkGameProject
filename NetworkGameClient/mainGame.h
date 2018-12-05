@@ -23,23 +23,23 @@ public:
         sAppName = "TagOrDie";
     }
     
-
 public:
     bool OnUserCreate() override;
     bool OnUserUpdate(float fElapsedTime) override;
     bool OnUserDestroy() override;
 private:
-
+    
     void Update(float fElapsedTime);
     void Draw();
 
+    uint64 GetCurrentTick();
     
-    uint8* ComposeMessage(NetworkLib::ClientMessageType type);
-
     NetworkLib::Client m_connection;
 
     Player m_player;
+    std::map<uint32, std::vector<PlayerState>> m_otherPlayers;
 
-    long double m_totalTime = 0.0;
+    float64 m_totalTime = 0.0;
+    uint64 m_totalTicks = 0;
 
 };
