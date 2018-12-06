@@ -4,7 +4,7 @@
 
 Player::Player()
     : m_input({false,false,false,false})
-    , m_state({0.0f, 0.0f, 0.0f, 0.0f})
+    , m_currentState({0.0f,0.0f,0.0f,0.0f})
 {
     
 }

@@ -72,7 +72,7 @@ void serialize(Archive & ar, PlayerState & p, const unsigned int version)
    - |Input| = PlayerInput-Struct
 
    Server::Accept
-   |MsgType|ID|PlayerState|
+   |MsgType|ID|Tick|PlayerState|
    - Delivers the player id and initial state of the player
    Server::Reject
    |MsgType|

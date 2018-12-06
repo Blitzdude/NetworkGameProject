@@ -9,12 +9,6 @@
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/archive/text_oarchive.hpp>
 
-/*
-* TODO:
-* Multiple player states
-* Time synchronisation
-
-*/
 
 class GameManager
 {
@@ -27,12 +21,11 @@ public:
     std::map<uint32, PlayerState> m_playerStates;
 
     std::string SerializeStatePackage();
+    std::string SerializeAcceptPackage();
 
     void UpdateState(const PlayerInput& input, int playerId, float32 dt);
 
     float64 m_totalTime = 0.0; // in seconds
-    
-    
     uint64 GetCurrentTick();
 private:
 };
@@ -57,7 +50,6 @@ int main(int argc, char* argv[])
         float32 l_fElapsedTime = elapsedTime.count();
         l_gm.m_totalTime += l_fElapsedTime;
         
-        Log::Debug(l_gm.GetCurrentTick(), l_gm.m_totalTime);
 
         while (l_server.HasMessages())
         {
@@ -78,12 +70,13 @@ int main(int argc, char* argv[])
             {
             case NetworkLib::ClientMessageType::Join:
                 Log::Debug("Player Joined");
+
                 // add player to list of players
                 l_np = { 30.0f,30.0f,0.0f, 10.0f };
                 l_gm.m_playerStates.emplace(l_gm.m_numPlayer++, l_np);
-                l_gm.m_numPlayer++;
+
                 // send player their starting position
-                l_server.SendToAll(l_gm.SerializeStatePackage());
+                l_server.SendToAll(l_gm.SerializeAcceptPackage());
 
                 break;
             case NetworkLib::ClientMessageType::Leave:
@@ -108,15 +101,17 @@ int main(int argc, char* argv[])
             }
         }
 
-        // Average byte size of message
-        if (l_server.GetStatistics().GetReceivedMessages() != 0) // stop division by zero error
-        {
-            Log::Info("Average bytes: "
-                , l_server.GetStatistics().GetReceivedBytes()
-                , "//", l_server.GetStatistics().GetReceivedMessages()
-                , "=", l_server.GetStatistics().GetReceivedBytes()
-                / l_server.GetStatistics().GetReceivedMessages());
-        }
+    }
+
+
+    // Average byte size of message
+    if (l_server.GetStatistics().GetReceivedMessages() != 0) // stop division by zero error
+    {
+        Log::Info("Average bytes: "
+            , l_server.GetStatistics().GetReceivedBytes()
+            , "//", l_server.GetStatistics().GetReceivedMessages()
+            , "=", l_server.GetStatistics().GetReceivedBytes()
+            / l_server.GetStatistics().GetReceivedMessages());
     }
 
     std::cin.get();
@@ -131,6 +126,7 @@ std::string GameManager::SerializeStatePackage()
 
     // msgType : numPlayers : (id ::Playerstate)  x numplayers
     l_archive << NetworkLib::ServerMessageType::State << m_numPlayer;
+    l_archive << GetCurrentTick() << m_totalTime;
 
     for (auto itr = m_playerStates.begin(); itr != m_playerStates.end(); itr++)
     {
@@ -140,11 +136,22 @@ std::string GameManager::SerializeStatePackage()
     return oss.str();
 }
 
+std::string GameManager::SerializeAcceptPackage()
+{
+    std::ostringstream oss;
+    boost::archive::text_oarchive l_archive(oss);
+
+    l_archive << NetworkLib::ServerMessageType::Accept;  // MsgType 
+    l_archive << m_numPlayer;                          // ID
+    l_archive << GetCurrentTick();                       // Tick
+    l_archive << PlayerState({30.0f, 30.0f, 0.0f, 10.0f}); // State
+
+
+    return oss.str();
+}
+
 void GameManager::UpdateState(const PlayerInput& input, int playerId, float32 dt)
 {
-    
-    
-
     // update player
     if (input.left) // turn left
     {
@@ -156,7 +163,6 @@ void GameManager::UpdateState(const PlayerInput& input, int playerId, float32 dt
     }
     if (input.up) // forward
     {
-
         m_playerStates[playerId].x += cosf(m_playerStates[playerId].facing) * m_playerStates[playerId].speed * dt;
         m_playerStates[playerId].y += sinf(m_playerStates[playerId].facing) * m_playerStates[playerId].speed * dt;
 

@@ -39,6 +39,8 @@ public:
     
     // map container with pairs of tickNumber-PlayerState, latest input should be the one with highest tick
     std::map<uint32, PlayerState> m_states; 
+    std::map<uint32, PlayerState> m_otherPlayerStates;
+    PlayerState m_currentState;
     PlayerInput m_input;
     PlayerInput m_previousInput;
     uint32 m_id = 0;

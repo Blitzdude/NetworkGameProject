@@ -7,6 +7,13 @@
 
 #include "Player.h"
 
+enum class GameState
+{
+    Disconnected,
+    Joining,
+    Joined,
+    Running
+};
 
 class MainGame : public olc::PixelGameEngine
 {
@@ -37,9 +44,10 @@ private:
     NetworkLib::Client m_connection;
 
     Player m_player;
-    std::map<uint32, std::vector<PlayerState>> m_otherPlayers;
+    std::map<uint32, PlayerState> m_otherPlayers;
 
     float64 m_totalTime = 0.0;
     uint64 m_totalTicks = 0;
 
+    GameState m_gameState = GameState::Joining;
 };
