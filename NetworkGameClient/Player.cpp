@@ -33,16 +33,17 @@ std::string Player::SerializeInput()
     return oss.str();
 }
 
-const const std::pair<uint32, PlayerState>& Player::GetNewestState()
+std::pair<uint32, PlayerState> Player::GetNewestState()
 {
-    auto ret = m_states.begin();
-    return std::make_pair(ret->first, ret->second);
+    auto itr = m_states.rbegin();
+    auto ret = std::make_pair(itr->first, itr->second);
+    return ret;
 }
 
 
 void Player::InsertState(const PlayerState & state, uint32 tick)
 {
-    // find the element with 
+    m_states.insert(std::make_pair(tick ,state));
 }
 
 namespace boost {

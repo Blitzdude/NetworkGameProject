@@ -14,7 +14,7 @@
 #include "IServer.h"
 
 using boost::asio::ip::udp;
-
+// first->ClientID, second->upd::endpoint
 typedef std::map<uint32_t, udp::endpoint> ClientList;
 typedef ClientList::value_type Client;
 

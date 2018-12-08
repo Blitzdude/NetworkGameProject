@@ -31,7 +31,7 @@ public:
     std::string SerializeInput();
 
     // Returns the state with the largest tick number
-    const std::pair<uint32, PlayerState>& GetNewestState();
+    std::pair<uint32, PlayerState> GetNewestState();
     void InsertState(const PlayerState& state, uint32 tick);
 
 private:

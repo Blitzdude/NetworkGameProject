@@ -4,7 +4,7 @@
 #include <boost/asio.hpp>
 
 namespace NetworkLib
-{
+{   // first->message, second->clientID
 	typedef std::pair<std::string, uint32_t> ClientMessage;
 
 	class IServer 

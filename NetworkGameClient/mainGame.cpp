@@ -31,9 +31,6 @@ bool MainGame::OnUserUpdate(float fElapsedTime)
     m_totalTime += fElapsedTime;
     m_totalTicks = GetCurrentTick();
 
-    Log::Debug(m_totalTicks, m_totalTime);
-
-
     // called once per frame
     std::ostringstream oss;
     boost::archive::text_oarchive l_oar(oss);
@@ -63,9 +60,10 @@ bool MainGame::OnUserUpdate(float fElapsedTime)
         switch (type)
         {
         case NetworkLib::ServerMessageType::Accept:
+        {
+
             if (m_gameState == GameState::Joining)
             {
-                Log::Debug("Joining game");
                 l_localPlayerState; // state of the player according to server
                 // type id tick playestate
                 
@@ -76,9 +74,10 @@ bool MainGame::OnUserUpdate(float fElapsedTime)
                 iar >> l_tick;
 
                 iar >> l_localPlayerState;
+                Log::Debug("Joining game ", l_slotId );
 
                 m_player.m_id = l_slotId;
-                m_player.m_states.insert(std::make_pair(l_tick, l_localPlayerState));
+                m_player.InsertState( l_localPlayerState, l_tick);
                 Log::Debug(l_slotId, l_tick);
                 m_gameState = GameState::Joined;
             }
@@ -88,11 +87,16 @@ bool MainGame::OnUserUpdate(float fElapsedTime)
             }
 
             break;
+        }
         case NetworkLib::ServerMessageType::Reject:
+        {
             Log::Debug("Server full... Join failed");
             m_gameState = GameState::Disconnected;
             break;
+        }
         case NetworkLib::ServerMessageType::State:
+        {
+
             Log::Debug("New State!");
             
             // First state in Server-state package is for the local player
@@ -110,7 +114,7 @@ bool MainGame::OnUserUpdate(float fElapsedTime)
             iar >> l_tempId;
             iar >> l_tempState;
 
-            m_player.m_states.insert(std::make_pair(l_tickNumber, l_tempState));
+            m_player.InsertState(l_tempState, l_tickNumber);
 
             for (int i = 0; i < l_numberOfPlayers - 1; i++)
             {
@@ -129,6 +133,7 @@ bool MainGame::OnUserUpdate(float fElapsedTime)
             // Update the local and other players positions by fixing the historic buffer and interpolating between previous positions
             
             break;
+        }
         default:
             break;
         }
@@ -153,8 +158,19 @@ bool MainGame::OnUserDestroy()
 void MainGame::Update(float fElapsedTime)
 {
     m_player.m_previousInput = m_player.m_input;
-   
-    m_player.m_currentState = m_player.m_states.begin()->second;
+    m_player.m_input = {false,false,false,false};
+
+    m_player.m_currentState = m_player.GetNewestState().second;
+    
+    
+    
+    Log::Debug("State: ", m_player.m_currentState.x
+               , m_player.m_currentState.y 
+               , m_player.m_currentState.facing
+               , "Size: ", m_player.GetNewestState().first);
+    
+
+
     // update player
     if (GetKey(olc::D).bHeld) // turn left
     {
