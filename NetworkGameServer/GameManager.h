@@ -14,6 +14,10 @@ public:
 
     std::vector<PlayerInput> m_inputs;
     uint32 m_numPlayers = 0;
+    // first->playerId, second->endpointId
+    std::map<uint32, uint32_t> m_playerEndpointIds;
+    // first->playerId, second->input
+    std::map<uint32, PlayerInput> m_playerInputs;
     // first->playerId, second->PlayerState
     std::map<uint32, PlayerState> m_playerStates;
 
@@ -23,8 +27,11 @@ public:
 
     void UpdateState(const PlayerInput& input, int playerId, float32 dt);
 
-    float64 m_totalTime = 0.0; // in seconds
+    float32 m_currentTime = 0.0; // in seconds
+    uint64  m_currentTicks = 0;
     uint64 GetCurrentTick();
-    float64 TickToTime(uint64 tick);
+    float32 TickToTime(uint64 tick); // TODO: move to common files
+    uint64 TimeToTick(float32 time); // TODO: move to common files
+
 private:
 };

@@ -12,7 +12,7 @@ std::string GameManager::SerializeStatePackage(uint32 id)
 
     //| MsgType | NumPlayers | ServerTick | LPTimeStamp |
     l_archive << NetworkLib::ServerMessageType::State << m_numPlayers;
-    l_archive << GetCurrentTick() << m_totalTime;
+    l_archive << GetCurrentTick() << m_currentTime;
 
     // Add the local player state first
     try
@@ -23,7 +23,11 @@ std::string GameManager::SerializeStatePackage(uint32 id)
         {
             Log::Error("No player of id: ", id, " found");
         }
-        l_archive << l_localPlayer->first << l_localPlayer->second;
+
+        uint32 l_localId = l_localPlayer->first;
+        PlayerState l_localState = l_localPlayer->second;
+        Log::Debug("Local", l_localId, l_localState.x, l_localState.y);
+        l_archive << l_localId << l_localState;
 
 
         // then add the rest
@@ -31,7 +35,10 @@ std::string GameManager::SerializeStatePackage(uint32 id)
         {
             if (itr->first != id)
             {
-                l_archive << itr->first << itr->second;
+                uint32 l_otherId = itr->first;
+                PlayerState l_otherState = itr->second;
+                l_archive << l_otherId << l_otherState;
+                Log::Debug("Other: ", l_otherId, l_otherState.x, l_otherState.y );
             }
         }
     }
@@ -43,7 +50,6 @@ std::string GameManager::SerializeStatePackage(uint32 id)
     {
         Log::Debug("Exception: ", e.what());
     }
-
 
     return oss.str();
 }
@@ -75,7 +81,7 @@ void GameManager::UpdateState(const PlayerInput& input, int playerId, float32 dt
 {
     try
     {
-        auto l_player = m_playerStates.at(playerId);
+        auto &l_player = m_playerStates.at(playerId);
 
         // update player
         if (input.left) // turn left
@@ -88,17 +94,16 @@ void GameManager::UpdateState(const PlayerInput& input, int playerId, float32 dt
         }
         if (input.up) // forward
         {
-            l_player.x += cosf(l_player.facing) * l_player.speed * dt;
-            l_player.y += sinf(l_player.facing) * l_player.speed * dt;
+            l_player.x += cosf(l_player.facing) * 100.0f * dt;
+            l_player.y += sinf(l_player.facing) * 100.0f * dt;
 
         }
         if (input.down) // back
         {
-            l_player.x -= cosf(l_player.facing) * l_player.speed * dt;
-            l_player.y -= sinf(l_player.facing) * l_player.speed * dt;
+            l_player.x -= cosf(l_player.facing) * 100.0f * dt;
+            l_player.y -= sinf(l_player.facing) * 100.0f * dt;
         }
-
-    }
+     }
     catch (const std::out_of_range& eoor)
     {
         Log::Debug("Exception, Out of range: No player found with id: "
@@ -114,11 +119,15 @@ void GameManager::UpdateState(const PlayerInput& input, int playerId, float32 dt
 uint64 GameManager::GetCurrentTick()
 {
 
-    return static_cast<uint64>(m_totalTime * ticks_per_second);
+    return static_cast<uint64>(m_currentTime * ticks_per_second);
 }
 
-float64 GameManager::TickToTime(uint64 tick)
+float32 GameManager::TickToTime(uint64 tick)
 {
-    
     return tick * seconds_per_tick;
+}
+
+uint64 GameManager::TimeToTick(float32 time)
+{
+    return time * ticks_per_second;
 }

@@ -28,9 +28,8 @@ bool MainGame::OnUserCreate()
 
 bool MainGame::OnUserUpdate(float fElapsedTime) 
 {
-    m_totalTime += fElapsedTime;
-    m_totalTicks = GetCurrentTick();
-
+    m_currentTime += fElapsedTime;
+    m_currentTicks = GetCurrentTick();
     // called once per frame
     std::ostringstream oss;
     boost::archive::text_oarchive l_oar(oss);
@@ -42,18 +41,15 @@ bool MainGame::OnUserUpdate(float fElapsedTime)
 
     if (m_player.HasInput())
     {
-        m_connection.Send(m_player.SerializeInput());
+        m_connection.Send(m_player.SerializeInput(m_currentTime));
     }
 
     while (m_connection.HasMessages())
     {
         auto l_msg = m_connection.PopMessage();
-        Log::Debug(l_msg);
+
         std::istringstream iss(l_msg);
         boost::archive::text_iarchive iar(iss);
-        // for network pacakges
-        PlayerState l_localPlayerState; // state of the player according to server
-
         
         NetworkLib::ServerMessageType type;
         iar >> type;
@@ -64,21 +60,26 @@ bool MainGame::OnUserUpdate(float fElapsedTime)
 
             if (m_gameState == GameState::Joining)
             {
-                l_localPlayerState; // state of the player according to server
                 // type id tick playestate
+                PlayerState l_receivedState; // state of the player according to server
                 
-                uint32 l_slotId;
-                iar >> l_slotId;
-                
-                uint32 l_tick;
-                iar >> l_tick;
+                uint32 l_receivedSlotId;
+                iar >> l_receivedSlotId;
+                uint64 l_receivedTick;
+                iar >> l_receivedTick;
 
-                iar >> l_localPlayerState;
-                Log::Debug("Joining game ", l_slotId );
+                if (l_receivedTick >= m_currentTicks)
+                {
+                    m_currentTicks = l_receivedTick;
+                    m_currentTime = TickToTime(m_currentTicks);
+                }
 
-                m_player.m_id = l_slotId;
-                m_player.InsertState( l_localPlayerState, l_tick);
-                Log::Debug(l_slotId, l_tick);
+                iar >> l_receivedState;
+                Log::Debug("Joining game ", l_receivedSlotId);
+
+                m_player.m_id = l_receivedSlotId;
+                m_player.InsertState(l_receivedState, l_receivedTick);
+                Log::Debug(l_receivedSlotId, l_receivedTick);
                 m_gameState = GameState::Joined;
             }
             else
@@ -96,39 +97,59 @@ bool MainGame::OnUserUpdate(float fElapsedTime)
         }
         case NetworkLib::ServerMessageType::State:
         {
-
-            Log::Debug("New State!");
             
-            // First state in Server-state package is for the local player
-
-            uint32 l_numberOfPlayers;
-            uint32 l_tickNumber;
-            float64 l_clientTimestamp; // most recent time stamp server had from client at the time of writing this package
-            uint32 l_tempId;
-            PlayerState l_tempState; // for usage in for loop;
-
             // Read the state package
-            iar >> l_numberOfPlayers;
-            iar >> l_tickNumber;
-            iar >> l_clientTimestamp;
-            iar >> l_tempId;
-            iar >> l_tempState;
+            uint32 l_receivedNumberOfPlayers;
+            iar >> l_receivedNumberOfPlayers;
 
-            m_player.InsertState(l_tempState, l_tickNumber);
+            uint64 l_receivedTick;
+            iar >> l_receivedTick;
 
-            for (int i = 0; i < l_numberOfPlayers - 1; i++)
-            {
-                iar >> l_tempId;
-                iar >> l_tempState;
-                auto it = m_otherPlayers.find(l_tempId);
-                if (it != m_otherPlayers.end())
-                {
-                     m_otherPlayers[l_tempId] = l_tempState;
-                }
-            }
-
+            float32 l_receivedTimestamp; // most recent time stamp server had from client at the time of writing this package
+            iar >> l_receivedTimestamp;
+            // Calculate round-trip Time and target tick;
+            float32 l_rttSec = m_currentTime - l_receivedTimestamp ;
+            uint64 l_targetTick = TimeToTick(l_rttSec) + m_currentTicks;
+            l_targetTick += 2; // Add a little for jitter. TODO: make better format for calculating jitter
+            Log::Debug("State: ", l_receivedNumberOfPlayers, l_receivedTick, l_receivedTimestamp);
             // if server is ahead of us, set current tick to server tick and use it to calculate the time
+            if (l_receivedTick >= m_currentTicks)
+            {
+                m_currentTicks = l_receivedTick;
+                m_currentTime = l_targetTick;
+            }
+            else
+            {
+                // remove un-needed elements from the map (for 2 seconds)
+                while (m_player.m_predictionHistory.size() > ticks_per_second * 2)
+                {
+                    m_player.m_predictionHistory.erase(m_player.m_predictionHistory.begin());
+                }
+                // insert the new prediction to players prediction history
+            }
             
+            uint32 l_receivedId;
+            iar >> l_receivedId;
+
+            // First state in Server-state package is for the local player
+            PlayerState l_receivedState; 
+            iar >> l_receivedState;
+            Log::Debug(l_receivedId, l_receivedState.x, l_receivedState.y);
+
+            m_player.InsertState(l_receivedState, l_receivedTick);
+
+            for (unsigned int i = 1; i == l_receivedNumberOfPlayers; i++)
+            {
+                uint32 l_receivedOtherId;
+                iar >> l_receivedOtherId;
+                PlayerState l_otherState;
+                iar >> l_otherState;
+
+                Log::Debug(l_receivedOtherId, l_otherState.x, l_otherState.y);
+                m_otherPlayers[l_receivedId] = l_otherState;
+            }
+            assert(m_otherPlayers.size() == (l_receivedNumberOfPlayers - 1));
+
             // record the localPlayers state and the states of other players
             // Update the local and other players positions by fixing the historic buffer and interpolating between previous positions
             
@@ -161,13 +182,6 @@ void MainGame::Update(float fElapsedTime)
     m_player.m_input = {false,false,false,false};
 
     m_player.m_currentState = m_player.GetNewestState().second;
-    
-    
-    
-    Log::Debug("State: ", m_player.m_currentState.x
-               , m_player.m_currentState.y 
-               , m_player.m_currentState.facing
-               , "Size: ", m_player.GetNewestState().first);
     
 
 
@@ -202,20 +216,40 @@ void MainGame::Update(float fElapsedTime)
 
 void MainGame::Draw()
 {
-    float l_playerX = m_player.m_currentState.x;
-    float l_playerY = m_player.m_currentState.y;
-    float l_facing = m_player.m_currentState.facing;
 
+    std::string toDraw = "Player Id: " + std::to_string(m_player.m_id);
+    DrawString(0,0, toDraw, olc::WHITE, 4U);
     // draw player
-    DrawCircle((int32_t)l_playerX, (int32_t)l_playerY, 10);
+    DrawCircle((int32_t)m_player.m_currentState.x, (int32_t)m_player.m_currentState.y, 10);
 
     DrawLine(m_player.m_currentState.x, m_player.m_currentState.y,
-        m_player.m_currentState.x + cosf(l_facing) * 10.0f,
-        m_player.m_currentState.y + sinf(l_facing) * 10.0f, olc::MAGENTA);
+        m_player.m_currentState.x + cosf(m_player.m_currentState.facing) * 10.0f,
+        m_player.m_currentState.y + sinf(m_player.m_currentState.facing) * 10.0f, olc::MAGENTA);
+
+    // Draw other players
+    for (auto itr : m_otherPlayers)
+    {
+        DrawCircle(itr.second.x, itr.second.y, 10, olc::BLUE);
+        DrawLine(itr.second.x, itr.second.y,
+        itr.second.x + cosf(itr.second.facing) + cosf(itr.second.facing) * 10.0f,
+        itr.second.y + sinf(itr.second.facing) + sinf(itr.second.facing) * 10.0f, olc::MAGENTA);
+    }
+    
+    
+}
+
+float32 MainGame::TickToTime(uint64 tick)
+{
+    return tick * seconds_per_tick;
+}
+
+uint64 MainGame::TimeToTick(float32 time)
+{
+    return time * ticks_per_second;
 }
 
 uint64 MainGame::GetCurrentTick()
 {
-    return static_cast<uint64>(m_totalTime * ticks_per_second); // static casting to stop compiler warning
+    return static_cast<uint64>(m_currentTime * ticks_per_second); // static casting to stop compiler warning
 }
 

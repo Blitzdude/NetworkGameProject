@@ -10,16 +10,6 @@
 class Player
 {
 private:
-    friend class boost::serialization::access;
-
-    template<class Archive>
-    void serialize(Archive& p_archive, const unsigned int p_version)
-    {
-        p_archive & NetworkLib::ClientMessageType::Input;
-        p_archive & m_id;
-        p_archive & m_input;
-        p_archive & m_playerTime;
-    }
 
 public:
     Player();
@@ -28,22 +18,22 @@ public:
     bool HasInput();
 
     // Serialize input
-    std::string SerializeInput();
+    std::string SerializeInput(float32 time);
 
     // Returns the state with the largest tick number
-    std::pair<uint32, PlayerState> GetNewestState();
-    void InsertState(const PlayerState& state, uint32 tick);
+    std::pair<uint64, PlayerState> GetNewestState();
+    std::pair<uint64, PlayerState> GetOldestState();
+    void InsertState(const PlayerState& state, uint64 tick);
 
 private:
 public:
     
-    // map container with pairs of tickNumber-PlayerState, latest input should be the one with highest tick
-    std::map<uint32, PlayerState> m_states; 
+    // map container <tick, state>, begin()->oldest, back()->newest
+    std::map<uint64, PlayerState> m_predictionHistory; 
     std::map<uint32, PlayerState> m_otherPlayerStates;
     PlayerState m_currentState;
     PlayerInput m_input;
     PlayerInput m_previousInput;
     uint32 m_id = 0;
 
-    float64 m_playerTime;
 };

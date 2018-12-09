@@ -39,15 +39,18 @@ private:
     void Update(float fElapsedTime);
     void Draw();
 
+
     uint64 GetCurrentTick();
+    float32 TickToTime(uint64 tick);
+    uint64 TimeToTick(float32 time);
     
     NetworkLib::Client m_connection;
 
     Player m_player;
     std::map<uint32, PlayerState> m_otherPlayers;
 
-    float64 m_totalTime = 0.0;
-    uint64 m_totalTicks = 0;
+    float32 m_currentTime = 0.0;
+    uint64 m_currentTicks = 0;
 
     GameState m_gameState = GameState::Joining;
 };
