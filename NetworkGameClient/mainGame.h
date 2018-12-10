@@ -53,4 +53,6 @@ private:
     uint64 m_currentTicks = 0;
 
     GameState m_gameState = GameState::Joining;
+
+    bool isRunning = true;
 };

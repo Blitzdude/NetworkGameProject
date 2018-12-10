@@ -26,7 +26,7 @@ std::string GameManager::SerializeStatePackage(uint32 id)
 
         uint32 l_localId = l_localPlayer->first;
         PlayerState l_localState = l_localPlayer->second;
-        Log::Debug("Local", l_localId, l_localState.x, l_localState.y);
+        // Log::Debug("Local", l_localId, l_localState.x, l_localState.y);
         l_archive << l_localId << l_localState;
 
 
@@ -38,7 +38,7 @@ std::string GameManager::SerializeStatePackage(uint32 id)
                 uint32 l_otherId = itr->first;
                 PlayerState l_otherState = itr->second;
                 l_archive << l_otherId << l_otherState;
-                Log::Debug("Other: ", l_otherId, l_otherState.x, l_otherState.y );
+                // Log::Debug("Other: ", l_otherId, l_otherState.x, l_otherState.y ,++l_count);
             }
         }
     }
@@ -72,7 +72,7 @@ std::string GameManager::SerializeRejectPackage()
 {
     std::ostringstream oss;
     boost::archive::text_oarchive l_archive(oss);
-    l_archive << NetworkLib::ServerMessageType::Reject;
+    l_archive << (uint8)NetworkLib::ServerMessageType::Reject;
 
     return oss.str();
 }
@@ -129,5 +129,5 @@ float32 GameManager::TickToTime(uint64 tick)
 
 uint64 GameManager::TimeToTick(float32 time)
 {
-    return time * ticks_per_second;
+    return static_cast<uint64>(time * ticks_per_second);
 }

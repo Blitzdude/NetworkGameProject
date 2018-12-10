@@ -92,7 +92,6 @@
   <ItemGroup>
     <ClCompile Include="Client.cpp" />
     <ClCompile Include="Factory.cpp" />
-    <ClCompile Include="Serialization.cpp" />
     <ClCompile Include="Server.cpp" />
     <ClCompile Include="Statistics.cpp" />
   </ItemGroup>
@@ -105,7 +104,6 @@
     <ClInclude Include="Log.h" />
     <ClInclude Include="Client.h" />
     <ClInclude Include="Messages.h" />
-    <ClInclude Include="Serialization.h" />
     <ClInclude Include="Server.h" />
     <ClInclude Include="Statistics.h" />
     <ClInclude Include="targetver.h" />

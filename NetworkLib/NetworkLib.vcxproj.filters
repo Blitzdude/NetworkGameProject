@@ -13,7 +13,6 @@
     <ClCompile Include="Server.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Serialization.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Constants.h">
@@ -49,7 +48,6 @@
     <ClInclude Include="Server.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Serialization.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Header Files">

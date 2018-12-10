@@ -31,8 +31,8 @@ bool MainGame::OnUserUpdate(float fElapsedTime)
     m_currentTime += fElapsedTime;
     m_currentTicks = GetCurrentTick();
     // called once per frame
-    std::ostringstream oss;
-    boost::archive::text_oarchive l_oar(oss);
+    // std::ostringstream oss;
+    // boost::archive::text_oarchive l_oar(oss);
 
     Clear(olc::BLACK);
 
@@ -93,6 +93,7 @@ bool MainGame::OnUserUpdate(float fElapsedTime)
         {
             Log::Debug("Server full... Join failed");
             m_gameState = GameState::Disconnected;
+            isRunning = false;
             break;
         }
         case NetworkLib::ServerMessageType::State:
@@ -111,7 +112,7 @@ bool MainGame::OnUserUpdate(float fElapsedTime)
             float32 l_rttSec = m_currentTime - l_receivedTimestamp ;
             uint64 l_targetTick = TimeToTick(l_rttSec) + m_currentTicks;
             l_targetTick += 2; // Add a little for jitter. TODO: make better format for calculating jitter
-            Log::Debug("State: ", l_receivedNumberOfPlayers, l_receivedTick, l_receivedTimestamp);
+            //Log::Debug("State: ", l_receivedNumberOfPlayers, l_receivedTick, l_receivedTimestamp);
             // if server is ahead of us, set current tick to server tick and use it to calculate the time
             if (l_receivedTick >= m_currentTicks)
             {
@@ -134,21 +135,26 @@ bool MainGame::OnUserUpdate(float fElapsedTime)
             // First state in Server-state package is for the local player
             PlayerState l_receivedState; 
             iar >> l_receivedState;
-            Log::Debug(l_receivedId, l_receivedState.x, l_receivedState.y);
-
+            
             m_player.InsertState(l_receivedState, l_receivedTick);
-
-            for (unsigned int i = 1; i == l_receivedNumberOfPlayers; i++)
+            // ss peek?
+            uint32 l_receivedOtherId;
+            PlayerState l_otherState;
+            for (unsigned int i = 1; i < l_receivedNumberOfPlayers; ++i)
             {
-                uint32 l_receivedOtherId;
                 iar >> l_receivedOtherId;
-                PlayerState l_otherState;
                 iar >> l_otherState;
-
-                Log::Debug(l_receivedOtherId, l_otherState.x, l_otherState.y);
-                m_otherPlayers[l_receivedId] = l_otherState;
+                auto itr = m_otherPlayers.find(l_receivedOtherId);
+                if ( itr != m_otherPlayers.end())
+                {   
+                    itr->second = l_otherState;
+                }
+                else
+                {
+                    m_otherPlayers.insert(std::make_pair(l_receivedOtherId, l_otherState));
+                }
             }
-            assert(m_otherPlayers.size() == (l_receivedNumberOfPlayers - 1));
+            //assert(m_otherPlayers.size() == (l_receivedNumberOfPlayers - 1));
 
             // record the localPlayers state and the states of other players
             // Update the local and other players positions by fixing the historic buffer and interpolating between previous positions
@@ -161,7 +167,7 @@ bool MainGame::OnUserUpdate(float fElapsedTime)
     }
     Draw();
 
-    return true;
+    return isRunning; // if false -> exits program
 }
 
 bool MainGame::OnUserDestroy()
@@ -229,7 +235,7 @@ void MainGame::Draw()
     // Draw other players
     for (auto itr : m_otherPlayers)
     {
-        DrawCircle(itr.second.x, itr.second.y, 10, olc::BLUE);
+        DrawCircle(itr.second.x, itr.second.y, 10, olc::CYAN);
         DrawLine(itr.second.x, itr.second.y,
         itr.second.x + cosf(itr.second.facing) + cosf(itr.second.facing) * 10.0f,
         itr.second.y + sinf(itr.second.facing) + sinf(itr.second.facing) * 10.0f, olc::MAGENTA);

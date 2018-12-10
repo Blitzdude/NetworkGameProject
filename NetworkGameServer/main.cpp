@@ -48,20 +48,28 @@ int main(int argc, char* argv[])
             case NetworkLib::ClientMessageType::Join:
             {
                 // add player to list of players
-                uint32 l_npId = l_gm.m_numPlayers++;
-                PlayerState l_npState = { 150.0f * l_gm.m_numPlayers ,300.0f,0.0f, 10.0f };
-                l_gm.m_playerStates.emplace(l_npId, l_npState);
-                
-                // add new inputs slot
-                PlayerInput l_npInput = {false, false,false,false};
-                l_gm.m_playerInputs.emplace(l_npId, l_npInput);
-                
-                // record the slot and endpoint
-                l_gm.m_playerEndpointIds.emplace(l_npId, l_msg.second);
-                Log::Debug("Player Joined: ", l_npId);
-                // send player their starting position
-                l_server.SendToClient(l_gm.SerializeAcceptPackage(l_npState, l_npId),
-                                      l_gm.m_playerEndpointIds[l_npId]);
+                if (l_gm.m_numPlayers < TOD_MAX_CLIENTS)
+                {
+                    uint32 l_npId = l_gm.m_numPlayers++;
+                    PlayerState l_npState = { 150.0f * l_gm.m_numPlayers ,300.0f,0.0f, 10.0f };
+                    l_gm.m_playerStates.emplace(l_npId, l_npState);
+                    
+                    // add new inputs slot
+                    PlayerInput l_npInput = {false, false,false,false};
+                    l_gm.m_playerInputs.emplace(l_npId, l_npInput);
+                    
+                    // record the slot and endpoint
+                    l_gm.m_playerEndpointIds.emplace(l_npId, l_msg.second);
+                    Log::Debug("Player Joined: ", l_npId);
+                    // send player their starting position
+                    l_server.SendToClient(l_gm.SerializeAcceptPackage(l_npState, l_npId),
+                                          l_gm.m_playerEndpointIds[l_npId]);
+                }
+                else
+                {
+                    // Server is full, send reject package
+                    l_server.SendToClient(l_gm.SerializeRejectPackage(), l_msg.second);
+                }
                 break;
             }
             case NetworkLib::ClientMessageType::Leave:
@@ -69,13 +77,16 @@ int main(int argc, char* argv[])
                 // Remove the player from player states
                 uint32 l_id;
                 iar >> l_id;
-                l_gm.m_playerStates.erase(l_id);
+                // Tries to remove player, fore player is destructed
+                // TODO: Remove player here
+                // endpoint, input, and states
+                
                 l_gm.m_numPlayers--;
                 break;
             }
             case NetworkLib::ClientMessageType::Input:
             {
-                Log::Debug("Player input get!");
+                // Log::Debug("Player input get!");
                 uint32 l_receivedId;
                 iar >> l_receivedId;
                 PlayerInput l_receivedInput;
@@ -91,9 +102,9 @@ int main(int argc, char* argv[])
                 }
                 
                 // Send server package to clients
-                for (auto itr : l_gm.m_playerStates)
+                for (auto itr : l_gm.m_playerEndpointIds)
                 {
-                    l_server.SendToClient(l_gm.SerializeStatePackage(itr.first), l_gm.m_playerEndpointIds.at(itr.first));
+                    l_server.SendToClient(l_gm.SerializeStatePackage(itr.first), itr.second);
                 }
                 
                 break;
