@@ -3,6 +3,111 @@
 #include <NetworkLib/Messages.h>
 #include <NetworkLib/Log.h>
 
+// Add new player, returns true if succesful, otherwise false
+std::pair<uint32, bool> GameManager::AddPlayer(PlayerState state, uint32_t endpoint)
+{
+    bool l_success = true;
+    uint32 l_id = (0U - 1U); // init to out of scope
+
+    // first check if the is a maximum number of players already
+    if (m_numPlayers >= TOD_MAX_CLIENTS)
+    {
+        l_success = false;
+    }
+    else
+    {
+        l_id = m_numPlayers++;
+    }
+    
+    if (l_success) // TODO: Try-catch struct for == .end() results?
+    {
+        if (m_playerStates.find(l_id) != m_playerStates.end() && l_success)
+        {
+            // if insertion wasn't succesful
+            Log::Debug("PlayerState already exists", l_id);
+            l_success = false;
+        }
+        else
+        {
+            m_playerStates.emplace(l_id, state);
+        }
+
+        if (m_playerInputs.find(l_id) != m_playerInputs.end() && l_success)
+        {
+            // if insertion wasn't succesful
+            Log::Debug("PlayerInput already exists", l_id);
+            l_success = false;
+        }
+        else
+        {
+            m_playerInputs.emplace(l_id, PlayerInput{false, false, false, false});
+        }
+
+        if (m_playerEndpointIds.find(l_id) != m_playerEndpointIds.end() && l_success)
+        {
+            // if insertion wasn't succesful
+            Log::Debug("PlayerEndpoint already exists", l_id);
+            l_success = false;
+        }
+        else
+        {
+            m_playerEndpointIds.emplace(l_id, endpoint);
+        }
+    }
+
+    // if any of the above fail, retuns false
+    return std::make_pair(l_id , l_success);
+}
+
+bool GameManager::RemovePlayer(uint32 id)
+{
+    bool success = true;
+    // first check if the is a maximum number of players already
+    assert(m_numPlayers > 0); // Make sure the number of players is NOT 0
+    
+    // map.erase(K) returns the amount of elements removed
+    // in this case: 1 if key was found
+
+    if (!m_playerInputs.erase(id))
+    {
+        Log::Debug("No Playerinput was erased ", id);
+        success = false;
+    }
+
+    if (!m_playerStates.erase(id))
+    {
+        Log::Debug("No PlayerState was erased ", id);
+        success = false;
+    }
+
+    if (!m_playerEndpointIds.erase(id))
+    {
+        Log::Debug("No Endpoint was erased ", id);
+        success = false;
+    }
+    if (success)
+    {
+        m_numPlayers--;
+    }
+
+    return success;
+}
+
+void GameManager::RemovePlayerByEndpoint(uint32 endpoint)
+{
+    // get the id from endpointId-map
+    uint32 l_id = std::numeric_limits<uint32>::max(); // set to max value for debugging
+    for (auto itr : m_playerEndpointIds)
+    {
+        if (endpoint == itr.second)
+        {
+            l_id = itr.first; // we have found the id
+        }
+    }
+    // if l_id is the maximum value, it will not find it from anywere.
+    RemovePlayer(l_id); 
+}
+
 /* State packackage structure:
 | msgType | tickNum | Client timestamp | LocalPlayerState | Other PlayerState | Other PlayerState | ... */
 std::string GameManager::SerializeStatePackage(uint32 id)
@@ -59,9 +164,9 @@ std::string GameManager::SerializeAcceptPackage(PlayerState state, uint32 id)
     std::ostringstream oss;
     boost::archive::text_oarchive l_archive(oss);
 
-    l_archive << NetworkLib::ServerMessageType::Accept;      // MsgType 
+    l_archive << NetworkLib::ServerMessageType::Accept;     // MsgType 
     l_archive << id;                                        // ID
-    l_archive << GetCurrentTick();                           // Tick
+    l_archive << GetCurrentTick();                          // Tick
     l_archive << state;                                     // State
 
 

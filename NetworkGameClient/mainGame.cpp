@@ -154,8 +154,6 @@ bool MainGame::OnUserUpdate(float fElapsedTime)
                     m_otherPlayers.insert(std::make_pair(l_receivedOtherId, l_otherState));
                 }
             }
-            //assert(m_otherPlayers.size() == (l_receivedNumberOfPlayers - 1));
-
             // record the localPlayers state and the states of other players
             // Update the local and other players positions by fixing the historic buffer and interpolating between previous positions
             
@@ -174,8 +172,12 @@ bool MainGame::OnUserDestroy()
 {
     std::ostringstream oss;
     boost::archive::text_oarchive l_archive(oss);
-    // Send a Join Request to server
-    l_archive << NetworkLib::ClientMessageType::Leave;
+    // Send a Leave Message to server TODO: send this about 10 times 
+    if (m_gameState != GameState::Disconnected)
+    {
+        // serialize Leave package |msgType|
+        l_archive << (uint8)NetworkLib::ClientMessageType::Leave;
+    }
 
     m_connection.Send(oss.str());
 

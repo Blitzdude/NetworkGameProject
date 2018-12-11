@@ -48,40 +48,28 @@ int main(int argc, char* argv[])
             case NetworkLib::ClientMessageType::Join:
             {
                 // add player to list of players
-                if (l_gm.m_numPlayers < TOD_MAX_CLIENTS)
+                PlayerState l_npState = { 150.0f * l_gm.m_numPlayers ,300.0f,0.0f, 10.0f };
+                auto l_np = l_gm.AddPlayer(l_npState, l_msg.second);
+                if (l_np.second)
                 {
-                    uint32 l_npId = l_gm.m_numPlayers++;
-                    PlayerState l_npState = { 150.0f * l_gm.m_numPlayers ,300.0f,0.0f, 10.0f };
-                    l_gm.m_playerStates.emplace(l_npId, l_npState);
-                    
-                    // add new inputs slot
-                    PlayerInput l_npInput = {false, false,false,false};
-                    l_gm.m_playerInputs.emplace(l_npId, l_npInput);
-                    
-                    // record the slot and endpoint
-                    l_gm.m_playerEndpointIds.emplace(l_npId, l_msg.second);
-                    Log::Debug("Player Joined: ", l_npId);
-                    // send player their starting position
-                    l_server.SendToClient(l_gm.SerializeAcceptPackage(l_npState, l_npId),
-                                          l_gm.m_playerEndpointIds[l_npId]);
+                    // new player inserted
+                    Log::Debug("Player Joined: ", l_np.first);
+                    l_server.SendToClient(l_gm.SerializeAcceptPackage(l_npState, l_np.first),
+                                          l_gm.m_playerEndpointIds[l_np.first]);
                 }
                 else
                 {
-                    // Server is full, send reject package
+                    // no room, or failed otherwise
+                    Log::Debug("Player Rejected: ", l_np.first);
                     l_server.SendToClient(l_gm.SerializeRejectPackage(), l_msg.second);
                 }
+                
                 break;
             }
             case NetworkLib::ClientMessageType::Leave:
             {
                 // Remove the player from player states
-                uint32 l_id;
-                iar >> l_id;
-                // Tries to remove player, fore player is destructed
-                // TODO: Remove player here
-                // endpoint, input, and states
-                
-                l_gm.m_numPlayers--;
+                l_gm.RemovePlayerByEndpoint(l_msg.second);
                 break;
             }
             case NetworkLib::ClientMessageType::Input:

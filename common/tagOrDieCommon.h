@@ -54,6 +54,12 @@ void serialize(Archive & ar, PlayerState & p, const unsigned int version)
 
 /* TAG or DIE
 // -------------------------------------------
+TODO: 
+- Client side prediction
+- Removing players
+
+
+// -------------------------------------------
    Package Structures
    --------------
    Client::Join

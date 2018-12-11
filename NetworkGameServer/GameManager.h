@@ -21,6 +21,13 @@ public:
     // first->playerId, second->PlayerState
     std::map<uint32, PlayerState> m_playerStates;
 
+    // Adds a new player to the game, return: first-> id, second->success
+    std::pair<uint32, bool> AddPlayer(PlayerState state, uint32_t endpoint);
+
+    // returns false if error during removing
+    bool RemovePlayer(uint32 id);
+    void RemovePlayerByEndpoint(uint32 endpoint);
+
     std::string SerializeStatePackage(uint32 id);
     std::string SerializeAcceptPackage(PlayerState state, uint32 id);
     std::string SerializeRejectPackage();
