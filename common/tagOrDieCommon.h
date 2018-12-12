@@ -7,6 +7,7 @@
 
 struct PlayerInput
 {
+    // TODO: This input can be packed into a single bool32;
     bool32 up;
     bool32 down;
     bool32 left;
@@ -54,10 +55,23 @@ void serialize(Archive & ar, PlayerState & p, const unsigned int version)
 
 /* TAG or DIE
 // -------------------------------------------
-TODO: 
-- Client side prediction
-- Removing players
-
+TODO:
+COMMON: 
+- InputState can be packed into a single bool32, decreasing
+    the amount of packages sent form client to server
+- rename variables to follow a common coding convention
+- Separate timing functions into their own class (Timer)
+CLIENT:
+- Encapsulate members
+- Client side prediction.
+- Timeout, when No response from server is detected
+SERVER:
+- Parsing of predictions too old and new.
+- Encapsulate members
+- When server closes, send close message to rest of players.
+- Timeouts when no response from client is detected
+NETWORKLIB:
+- Remove unused functions (I.e. Send(mutable_buffer) )
 
 // -------------------------------------------
    Package Structures

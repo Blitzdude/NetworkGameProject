@@ -7,7 +7,7 @@
 std::pair<uint32, bool> GameManager::AddPlayer(PlayerState state, uint32_t endpoint)
 {
     bool l_success = true;
-    uint32 l_id = (0U - 1U); // init to out of scope
+    uint32 l_id = std::numeric_limits<uint32>::max(); // init to out of scope
 
     // first check if the is a maximum number of players already
     if (m_numPlayers >= TOD_MAX_CLIENTS)
@@ -16,7 +16,19 @@ std::pair<uint32, bool> GameManager::AddPlayer(PlayerState state, uint32_t endpo
     }
     else
     {
-        l_id = m_numPlayers++;
+        for (int i = 0; i < m_playerEndpointIds.size() + 1; ++i)
+        {
+            if (m_playerEndpointIds.find(i) == m_playerEndpointIds.end())
+            {
+                // id found,
+                // NOTE: If no id is found before .size(), then the last
+                // .size() + 1 should be the id;
+                l_id = i;
+                break;
+            }
+        }
+        assert(l_id < m_numPlayers + 1);
+        m_numPlayers++;
     }
     
     if (l_success) // TODO: Try-catch struct for == .end() results?

@@ -31,7 +31,6 @@ int main(int argc, char* argv[])
         l_gm.m_currentTime += l_fElapsedTime;
         l_gm.m_currentTicks = l_gm.GetCurrentTick();
 
-
         while (l_server.HasMessages())
         {
             // first part is the client id, second is the message
@@ -56,6 +55,14 @@ int main(int argc, char* argv[])
                     Log::Debug("Player Joined: ", l_np.first);
                     l_server.SendToClient(l_gm.SerializeAcceptPackage(l_npState, l_np.first),
                                           l_gm.m_playerEndpointIds[l_np.first]);
+
+                    // Send server package to clients
+                    // TODO: Implement SendStateToAllClients
+                    for (auto itr : l_gm.m_playerEndpointIds)
+                    {
+                        l_server.SendToClient(l_gm.SerializeStatePackage(itr.first), itr.second);
+                    }
+
                 }
                 else
                 {
@@ -70,6 +77,15 @@ int main(int argc, char* argv[])
             {
                 // Remove the player from player states
                 l_gm.RemovePlayerByEndpoint(l_msg.second);
+
+                // Send server package to clients
+                // TODO: Implement SendStateToAllClients
+                for (auto itr : l_gm.m_playerEndpointIds)
+                {
+                    l_server.SendToClient(l_gm.SerializeStatePackage(itr.first), itr.second);
+                }
+
+
                 break;
             }
             case NetworkLib::ClientMessageType::Input:
@@ -98,6 +114,9 @@ int main(int argc, char* argv[])
                 break;
             }
             default:
+                // Should never come here, assert if it does
+                Log::Error("Message type not found", (uint8)l_type);
+                assert(0);
                 break;
             }
 
@@ -108,6 +127,18 @@ int main(int argc, char* argv[])
         {
             l_gm.UpdateState(l_gm.m_playerInputs.at(itr.first), itr.first, l_fElapsedTime);
         }
+
+        // Send game state server package to clients
+        // TODO: Send states every 200 ms or so
+        /*
+        if (!stateWasSent)
+        {
+            for (auto itr : l_gm.m_playerEndpointIds)
+            {
+                l_server.SendToClient(l_gm.SerializeStatePackage(itr.first), itr.second);
+            }
+        }
+        */
 
     }
 

@@ -23,14 +23,19 @@ public:
     // Returns the state with the largest tick number
     std::pair<uint64, PlayerState> GetNewestState();
     std::pair<uint64, PlayerState> GetOldestState();
-    void InsertState(const PlayerState& state, uint64 tick);
+    // returns false, if either state or input already exists for tick
+    bool InsertState(const PlayerState& state, const PlayerInput& input, uint64 tick);
+    // calculates next state based on state, input and difference in ticks
+    PlayerState CalculateNewState(const PlayerState& state, const PlayerInput& input, uint64 deltaTicks);
+
 
 private:
 public:
-    
     // map container <tick, state>, begin()->oldest, back()->newest
-    std::map<uint64, PlayerState> m_predictionHistory; 
-    std::map<uint32, PlayerState> m_otherPlayerStates;
+    // TODO: encapsulate members
+    std::map<uint64, PlayerState> m_statePredictionHistory;
+    std::map<uint64, PlayerInput> m_inputPredictionHistory;
+    //std::map<uint32, PlayerState> m_otherPlayerStates;
     PlayerState m_currentState;
     PlayerInput m_input;
     PlayerInput m_previousInput;

@@ -30,9 +30,6 @@ bool MainGame::OnUserUpdate(float fElapsedTime)
 {
     m_currentTime += fElapsedTime;
     m_currentTicks = GetCurrentTick();
-    // called once per frame
-    // std::ostringstream oss;
-    // boost::archive::text_oarchive l_oar(oss);
 
     Clear(olc::BLACK);
 
@@ -51,13 +48,12 @@ bool MainGame::OnUserUpdate(float fElapsedTime)
         std::istringstream iss(l_msg);
         boost::archive::text_iarchive iar(iss);
         
-        NetworkLib::ServerMessageType type;
-        iar >> type;
-        switch (type)
+        NetworkLib::ServerMessageType l_type;
+        iar >> l_type;
+        switch (l_type)
         {
         case NetworkLib::ServerMessageType::Accept:
         {
-
             if (m_gameState == GameState::Joining)
             {
                 // type id tick playestate
@@ -78,7 +74,7 @@ bool MainGame::OnUserUpdate(float fElapsedTime)
                 Log::Debug("Joining game ", l_receivedSlotId);
 
                 m_player.m_id = l_receivedSlotId;
-                m_player.InsertState(l_receivedState, l_receivedTick);
+                m_player.m_statePredictionHistory.emplace(l_receivedTick, l_receivedState );
                 Log::Debug(l_receivedSlotId, l_receivedTick);
                 m_gameState = GameState::Joined;
             }
@@ -98,7 +94,11 @@ bool MainGame::OnUserUpdate(float fElapsedTime)
         }
         case NetworkLib::ServerMessageType::State:
         {
+            // Clear the players info on other players
+            m_otherPlayers.clear();
             
+            // TODO: make the client remove players no found (or send removal message from server)
+
             // Read the state package
             uint32 l_receivedNumberOfPlayers;
             iar >> l_receivedNumberOfPlayers;
@@ -107,13 +107,23 @@ bool MainGame::OnUserUpdate(float fElapsedTime)
             iar >> l_receivedTick;
 
             float32 l_receivedTimestamp; // most recent time stamp server had from client at the time of writing this package
-            iar >> l_receivedTimestamp;
-            // Calculate round-trip Time and target tick;
+            iar >> l_receivedTimestamp; // used to estimate roundTripTime
+           
+            // On receiving the state package, calculate where the client should predict to
             float32 l_rttSec = m_currentTime - l_receivedTimestamp ;
             uint64 l_targetTick = TimeToTick(l_rttSec) + m_currentTicks;
             l_targetTick += 2; // Add a little for jitter. TODO: make better format for calculating jitter
-            //Log::Debug("State: ", l_receivedNumberOfPlayers, l_receivedTick, l_receivedTimestamp);
-            // if server is ahead of us, set current tick to server tick and use it to calculate the time
+            
+
+            // First id-state pair in state package is for the local player
+            uint32 l_receivedId;
+            iar >> l_receivedId;
+
+            PlayerState l_receivedState;
+            iar >> l_receivedState;
+
+            // On the first message or if server is ahead of us, 
+            //set current tick to server tick and use it to calculate the time
             if (l_receivedTick >= m_currentTicks)
             {
                 m_currentTicks = l_receivedTick;
@@ -121,48 +131,88 @@ bool MainGame::OnUserUpdate(float fElapsedTime)
             }
             else
             {
-                // remove un-needed elements from the map (for 2 seconds)
-                while (m_player.m_predictionHistory.size() > ticks_per_second * 2)
+                // Prune the prediction history for predictions older then the received tick
+                while (!m_player.m_statePredictionHistory.empty() &&
+                        m_player.m_statePredictionHistory.begin()->first < l_receivedTick)
                 {
-                    m_player.m_predictionHistory.erase(m_player.m_predictionHistory.begin());
+                    // Older elements are in front of the map
+                    m_player.m_statePredictionHistory.erase(m_player.m_statePredictionHistory.begin());
                 }
-                // insert the new prediction to players prediction history
-            }
-            
-            uint32 l_receivedId;
-            iar >> l_receivedId;
 
-            // First state in Server-state package is for the local player
-            PlayerState l_receivedState; 
-            iar >> l_receivedState;
+                // insert the new prediction to players prediction history
+                auto l_insertedState = m_player.m_statePredictionHistory.insert(std::make_pair(l_receivedTick, l_receivedState));
+                if (l_insertedState.second) // second is false, if there was a value with key.
+                {
+                    // if a Key is already found, check for error within margin (0.01)
+
+                    // calculate the deviations in x- and y-position between latestPrediction and received state
+                    float32 dx = m_player.GetNewestState().second.x - l_receivedState.x;
+                    float32 dy = m_player.GetNewestState().second.y - l_receivedState.y;
+                    constexpr float32 c_maxError = 0.01f;
+                    constexpr float32 c_maxErrorSqrd = c_maxError * c_maxError;
+                    float32 l_errorSqrd = (dx * dx) + (dy * dy);
+                    if (l_errorSqrd > c_maxError)
+                    {
+                        // if error is found, Misprediction has happened
+                        Log::Debug("Misprediction error of: ", sqrtf(l_errorSqrd), " has occurred at tick: ", l_receivedTick, " Rewinding and replaying");
+                        // change the value at tick-index (l_insertedState)
+                        m_player.m_statePredictionHistory[l_receivedTick] = l_receivedState;
+                        // remove all values older then changed tick
+
+                        // simulate back to the latest tick-state
+                        for (auto itr = m_player.m_statePredictionHistory.find(l_receivedId);
+                                std::next(itr) != m_player.m_statePredictionHistory.end(); 
+                                itr++)
+                        {
+                            auto l_loopCurrentState = itr;
+                            uint32 l_loopCurrentTick = itr->first;
+                            // get the input the player had for the fixable state
+                            auto l_loopCurrentInput = m_player.m_inputPredictionHistory.find(itr->first);
+
+                            // next state to be modified
+                            auto l_nextState = std::next(itr);
+
+                            // TODO: Need deltaTime, use difference of ticks?
+                            // TODO: LEFTOFF: implement fixing of prediction history.
+
+                        }
+
+                        // Handle any Mispredictions, by simulating back to the present from the corrected state
+                    }
+                    
+                }
+
+                
+            }
+            m_player.m_statePredictionHistory[l_receivedTick] = l_receivedState;
             
-            m_player.InsertState(l_receivedState, l_receivedTick);
-            // ss peek?
-            uint32 l_receivedOtherId;
+            // Get the remaining states for other players
+            uint32 l_OtherId;
             PlayerState l_otherState;
             for (unsigned int i = 1; i < l_receivedNumberOfPlayers; ++i)
             {
-                iar >> l_receivedOtherId;
+                iar >> l_OtherId;
                 iar >> l_otherState;
-                auto itr = m_otherPlayers.find(l_receivedOtherId);
+                auto itr = m_otherPlayers.find(l_OtherId);
                 if ( itr != m_otherPlayers.end())
                 {   
                     itr->second = l_otherState;
                 }
                 else
                 {
-                    m_otherPlayers.insert(std::make_pair(l_receivedOtherId, l_otherState));
+                    m_otherPlayers.insert(std::make_pair(l_OtherId, l_otherState));
                 }
             }
-            // record the localPlayers state and the states of other players
-            // Update the local and other players positions by fixing the historic buffer and interpolating between previous positions
-            
             break;
         }
         default:
+            // Should never come here, assert if does
+            Log::Error("Message type not found", (uint8)l_type);
+            assert(0);
             break;
         }
     }
+
     Draw();
 
     return isRunning; // if false -> exits program
@@ -176,10 +226,11 @@ bool MainGame::OnUserDestroy()
     if (m_gameState != GameState::Disconnected)
     {
         // serialize Leave package |msgType|
+        // TODO: Implement: SerializeLeavePackage();
         l_archive << (uint8)NetworkLib::ClientMessageType::Leave;
+        m_connection.Send(oss.str());
     }
 
-    m_connection.Send(oss.str());
 
     return true;
 }
@@ -191,8 +242,6 @@ void MainGame::Update(float fElapsedTime)
 
     m_player.m_currentState = m_player.GetNewestState().second;
     
-
-
     // update player
     if (GetKey(olc::D).bHeld) // turn left
     {
@@ -210,7 +259,6 @@ void MainGame::Update(float fElapsedTime)
         
         m_player.m_currentState.x += cosf(m_player.m_currentState.facing) * m_player.m_currentState.speed * fElapsedTime;
         m_player.m_currentState.y += sinf(m_player.m_currentState.facing) * m_player.m_currentState.speed * fElapsedTime;
-
     }
     if (GetKey(olc::S).bHeld) // back
     {

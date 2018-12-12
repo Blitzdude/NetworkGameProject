@@ -18,7 +18,7 @@ typedef int bool32;
 
 constexpr uint64 ticks_per_second = 60;
 constexpr float32 seconds_per_tick = 1.0f / (float32)ticks_per_second;
-constexpr uint16 TOD_MAX_CLIENTS = 2;
+constexpr uint16 TOD_MAX_CLIENTS = 4;
 constexpr uint16 TOD_PORT = 8080;
 constexpr uint16 TOD_NUMBER_OF_THREADS = 2;
 

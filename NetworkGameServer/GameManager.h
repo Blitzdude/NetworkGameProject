@@ -24,16 +24,18 @@ public:
     // Adds a new player to the game, return: first-> id, second->success
     std::pair<uint32, bool> AddPlayer(PlayerState state, uint32_t endpoint);
 
-    // returns false if error during removing
+    // returns false if error during removal
     bool RemovePlayer(uint32 id);
     void RemovePlayerByEndpoint(uint32 endpoint);
 
+    // serialization functions return the msg string
     std::string SerializeStatePackage(uint32 id);
     std::string SerializeAcceptPackage(PlayerState state, uint32 id);
     std::string SerializeRejectPackage();
 
     void UpdateState(const PlayerInput& input, int playerId, float32 dt);
 
+    // TODO: These should be a common Timer class
     float32 m_currentTime = 0.0; // in seconds
     uint64  m_currentTicks = 0;
     uint64 GetCurrentTick();
