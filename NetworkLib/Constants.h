@@ -16,6 +16,7 @@ static const int NetworkBufferSize = 1024;
 
 typedef int bool32;
 
+constexpr uint64 packages_per_second = 10;
 constexpr uint64 ticks_per_second = 60;
 constexpr float32 seconds_per_tick = 1.0f / (float32)ticks_per_second;
 constexpr uint16 TOD_MAX_CLIENTS = 4;

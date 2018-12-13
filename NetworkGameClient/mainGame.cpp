@@ -111,8 +111,10 @@ bool MainGame::OnUserUpdate(float fElapsedTime)
            
             // On receiving the state package, calculate where the client should predict to
             float32 l_rttSec = m_currentTime - l_receivedTimestamp ;
-            uint64 l_targetTick = TimeToTick(l_rttSec) + m_currentTicks;
-            l_targetTick += 2; // Add a little for jitter. TODO: make better format for calculating jitter
+            uint32 l_ticksToPredict = TimeToTick(l_rttSec);
+            l_ticksToPredict += 2; // Add a little for jitter. TODO: make better format for calculating jitter
+            m_targetTickNumber = l_ticksToPredict + l_receivedTick;
+            
             
 
             // First id-state pair in state package is for the local player
@@ -125,9 +127,10 @@ bool MainGame::OnUserUpdate(float fElapsedTime)
             // On the first message or if server is ahead of us, 
             //set current tick to server tick and use it to calculate the time
             if (l_receivedTick >= m_currentTicks)
-            {
-                m_currentTicks = l_receivedTick;
-                m_currentTime = l_targetTick;
+            {   
+                Log::Debug("Server is ahead of us. Resetting time to: ", m_targetTickNumber);
+                m_currentTicks = m_targetTickNumber;
+                m_currentTime = TickToTime(m_currentTicks);
             }
             else
             {
@@ -174,7 +177,10 @@ bool MainGame::OnUserUpdate(float fElapsedTime)
 
                             // TODO: Need deltaTime, use difference of ticks?
                             // TODO: LEFTOFF: implement fixing of prediction history.
-
+                            l_nextState->second = 
+                                m_player.CalculateNewState(l_loopCurrentState->second, 
+                                                           l_loopCurrentInput->second, 
+                                                           TickToTime(l_nextState->first - l_loopCurrentState->first));
                         }
 
                         // Handle any Mispredictions, by simulating back to the present from the corrected state
@@ -184,8 +190,7 @@ bool MainGame::OnUserUpdate(float fElapsedTime)
 
                 
             }
-            m_player.m_statePredictionHistory[l_receivedTick] = l_receivedState;
-            
+
             // Get the remaining states for other players
             uint32 l_OtherId;
             PlayerState l_otherState;
@@ -237,22 +242,15 @@ bool MainGame::OnUserDestroy()
 
 void MainGame::Update(float fElapsedTime)
 {
+    // TODO: move below to player update and just call this instead
+    // m_player.Update(float fElapsedTime);
+
     m_player.m_previousInput = m_player.m_input;
     m_player.m_input = {false,false,false,false};
 
     m_player.m_currentState = m_player.GetNewestState().second;
     
     // update player
-    if (GetKey(olc::D).bHeld) // turn left
-    {
-        m_player.m_input.left = true;
-        m_player.m_currentState.facing += 1.0f * fElapsedTime;
-    }
-    if (GetKey(olc::A).bHeld) // turn right
-    {
-        m_player.m_input.right = true;
-        m_player.m_currentState.facing -= 1.0f * fElapsedTime;
-    }
     if (GetKey(olc::W).bHeld) // forward
     {
         m_player.m_input.up = true;
@@ -267,6 +265,16 @@ void MainGame::Update(float fElapsedTime)
         m_player.m_currentState.x -= cosf(m_player.m_currentState.facing) * m_player.m_currentState.speed * fElapsedTime;
         m_player.m_currentState.y -= sinf(m_player.m_currentState.facing) * m_player.m_currentState.speed * fElapsedTime;
     }
+    if (GetKey(olc::D).bHeld) // turn left
+    {
+        m_player.m_input.left = true;
+        m_player.m_currentState.facing += 1.0f * fElapsedTime;
+    }
+    if (GetKey(olc::A).bHeld) // turn right
+    {
+        m_player.m_input.right = true;
+        m_player.m_currentState.facing -= 1.0f * fElapsedTime;
+    }
 
 }
 
@@ -276,11 +284,16 @@ void MainGame::Draw()
     std::string toDraw = "Player Id: " + std::to_string(m_player.m_id);
     DrawString(0,0, toDraw, olc::WHITE, 4U);
     // draw player
-    DrawCircle((int32_t)m_player.m_currentState.x, (int32_t)m_player.m_currentState.y, 10);
+    if (GameState::Joined == m_gameState)
+    {
+    PlayerState l_currentPlayerState = m_player.GetNewestState().second;
 
-    DrawLine(m_player.m_currentState.x, m_player.m_currentState.y,
-        m_player.m_currentState.x + cosf(m_player.m_currentState.facing) * 10.0f,
-        m_player.m_currentState.y + sinf(m_player.m_currentState.facing) * 10.0f, olc::MAGENTA);
+    DrawCircle((int32_t)l_currentPlayerState.x, (int32_t)l_currentPlayerState.y, 10);
+
+    DrawLine(l_currentPlayerState.x, l_currentPlayerState.y,
+        l_currentPlayerState.x + cosf(l_currentPlayerState.facing) * 10.0f,
+        l_currentPlayerState.y + sinf(l_currentPlayerState.facing) * 10.0f, olc::MAGENTA);
+    }
 
     // Draw other players
     for (auto itr : m_otherPlayers)

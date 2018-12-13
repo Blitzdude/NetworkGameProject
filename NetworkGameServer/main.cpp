@@ -30,6 +30,8 @@ int main(int argc, char* argv[])
         float32 l_fElapsedTime = elapsedTime.count();
         l_gm.m_currentTime += l_fElapsedTime;
         l_gm.m_currentTicks = l_gm.GetCurrentTick();
+        uint32 l_lastTickStatesSent = 0;
+        
 
         while (l_server.HasMessages())
         {
@@ -85,7 +87,6 @@ int main(int argc, char* argv[])
                     l_server.SendToClient(l_gm.SerializeStatePackage(itr.first), itr.second);
                 }
 
-
                 break;
             }
             case NetworkLib::ClientMessageType::Input:
@@ -128,17 +129,16 @@ int main(int argc, char* argv[])
             l_gm.UpdateState(l_gm.m_playerInputs.at(itr.first), itr.first, l_fElapsedTime);
         }
 
-        // Send game state server package to clients
-        // TODO: Send states every 200 ms or so
-        /*
-        if (!stateWasSent)
+        // Send game state server package to clients 10 times a second        
+        if (l_gm.m_currentTicks >= l_lastTickStatesSent + (ticks_per_second / packages_per_second));
         {
             for (auto itr : l_gm.m_playerEndpointIds)
             {
                 l_server.SendToClient(l_gm.SerializeStatePackage(itr.first), itr.second);
             }
+            l_lastTickStatesSent = l_gm.m_currentTicks;
         }
-        */
+        
 
     }
 

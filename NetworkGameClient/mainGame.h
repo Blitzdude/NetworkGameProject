@@ -49,8 +49,9 @@ private:
     Player m_player;
     std::map<uint32, PlayerState> m_otherPlayers;
 
-    float32 m_currentTime = 0.0;
+    float32 m_currentTime = 0.0f;
     uint64 m_currentTicks = 0;
+    uint64 m_targetTickNumber = 0;
 
     GameState m_gameState = GameState::Joining;
 

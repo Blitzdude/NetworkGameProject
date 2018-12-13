@@ -26,8 +26,8 @@ public:
     // returns false, if either state or input already exists for tick
     bool InsertState(const PlayerState& state, const PlayerInput& input, uint64 tick);
     // calculates next state based on state, input and difference in ticks
-    PlayerState CalculateNewState(const PlayerState& state, const PlayerInput& input, uint64 deltaTicks);
-
+    PlayerState CalculateNewState(const PlayerState& state, const PlayerInput& input, float32 deltaTime);
+    void Update(float deltaTime);
 
 private:
 public:

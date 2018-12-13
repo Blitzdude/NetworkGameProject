@@ -1,6 +1,7 @@
 #include "Player.h"
 #include <sstream>
 #include <NetworkLib/Messages.h>
+#include "mainGame.h"
 
 Player::Player()
     : m_input({false,false,false,false})
@@ -56,11 +57,37 @@ bool Player::InsertState(const PlayerState & state, const PlayerInput & input, u
     return success;
 }
 
-PlayerState Player::CalculateNewState(const PlayerState& state, const PlayerInput& input, uint64 deltaTicks)
+PlayerState Player::CalculateNewState(const PlayerState& state, const PlayerInput& input, float32 deltaTime)
 {
+    // TODO: Test
+    PlayerState l_ret = state;
 
+    if (input.up)
+    {
+        l_ret.x += cosf(l_ret.facing) * l_ret.speed * deltaTime;
+        l_ret.y += sinf(l_ret.facing) * l_ret.speed * deltaTime;
+    }
+    if (input.down)
+    {
+        l_ret.x -= cosf(l_ret.facing) * l_ret.speed * deltaTime;
+        l_ret.y -= sinf(l_ret.facing) * l_ret.speed * deltaTime;
+    }
+    if (input.left)
+    {
+        l_ret.facing += 1.0f * deltaTime;
+    }
+    if (input.right)
+    {
+        l_ret.facing -= 1.0f * deltaTime;
+    }
 
-    return PlayerState();
+    return l_ret;
+}
+
+void Player::Update(float deltaTime)
+{
+    
+    // predict the tick and add a new state to state prediction buffer 
 }
 
 

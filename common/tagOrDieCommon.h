@@ -1,4 +1,5 @@
 #pragma once
+// This file is included in the commons file directory, thus visible to all projects
 #include <NetworkLib/Constants.h>
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/archive/text_oarchive.hpp>
@@ -66,6 +67,7 @@ CLIENT:
 - Client side prediction.
 - Timeout, when No response from server is detected
 SERVER:
+- Send 10 snapshots per second (every 6 ticks)
 - Parsing of predictions too old and new.
 - Encapsulate members
 - When server closes, send close message to rest of players.
