@@ -5,7 +5,7 @@
 
 Player::Player()
     : m_input({false,false,false,false})
-    , m_currentState({0.0f,0.0f,0.0f,0.0f})
+    , m_currentState({0.0f,0.0f,0.0f})
 {
 }
 
@@ -21,14 +21,14 @@ bool Player::HasInput()
             m_input.right != m_previousInput.right);
 }
 
-std::string Player::SerializeInput(float32 time)
+std::string Player::SerializeInput(float32 time, uint64 tick)
 {
 
     std::ostringstream oss;
     boost::archive::text_oarchive l_archive(oss);
     
     //  type: id: input: time
-    l_archive << (uint8)NetworkLib::ClientMessageType::Input << m_id << m_input << time;
+    l_archive << (uint8)NetworkLib::ClientMessageType::Input << m_id << time << tick << m_input;
 
     return oss.str();
 }
@@ -57,37 +57,49 @@ bool Player::InsertState(const PlayerState & state, const PlayerInput & input, u
     return success;
 }
 
-PlayerState Player::CalculateNewState(const PlayerState& state, const PlayerInput& input, float32 deltaTime)
+PlayerState Player::Tick(const PlayerState& state, const PlayerInput& input)
 {
-    // TODO: Test
     PlayerState l_ret = state;
-
+    // TODO: Replace l_ret.speed with c_max_speed
     if (input.up)
     {
-        l_ret.x += cosf(l_ret.facing) * l_ret.speed * deltaTime;
-        l_ret.y += sinf(l_ret.facing) * l_ret.speed * deltaTime;
+        l_ret.x += cosf(l_ret.facing) * c_max_speed * seconds_per_tick;
+        l_ret.y += sinf(l_ret.facing) * c_max_speed * seconds_per_tick;
     }
     if (input.down)
     {
-        l_ret.x -= cosf(l_ret.facing) * l_ret.speed * deltaTime;
-        l_ret.y -= sinf(l_ret.facing) * l_ret.speed * deltaTime;
+        l_ret.x -= cosf(l_ret.facing) * c_max_speed * seconds_per_tick;
+        l_ret.y -= sinf(l_ret.facing) * c_max_speed * seconds_per_tick;
     }
     if (input.left)
     {
-        l_ret.facing += 1.0f * deltaTime;
+        l_ret.facing += c_turn_speed * seconds_per_tick;
     }
     if (input.right)
     {
-        l_ret.facing -= 1.0f * deltaTime;
+        l_ret.facing -= c_turn_speed * seconds_per_tick;
     }
 
     return l_ret;
 }
-
-void Player::Update(float deltaTime)
+// ticks the player, until target Tick is reached
+void Player::Update(uint64 targetTick)
 {
-    
-    // predict the tick and add a new state to state prediction buffer 
+    uint64 l_newestTick = GetNewestState().first;
+    while (l_newestTick < targetTick)
+    {
+        // if the map is too large, remove the last element
+        if ( m_statePredictionHistory.size() > ticks_per_second)
+        {
+            // Older elements are in front of the map
+            m_statePredictionHistory.erase(m_statePredictionHistory.begin());
+        }
+
+        // predict the tick and add a new state to state prediction buffer 
+        PlayerState l_newState = Tick(GetNewestState().second, m_input);
+        m_statePredictionHistory.emplace(++l_newestTick, l_newState);
+        m_inputPredictionHistory.emplace(l_newestTick, m_input);
+    }
 }
 
 

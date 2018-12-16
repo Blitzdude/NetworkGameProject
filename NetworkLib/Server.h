@@ -2,11 +2,8 @@
 #include "Constants.h"
 #include "Messages.h"
 #include "Statistics.h"
-
 #include "LockedQueue.h"
-
 #include <boost/asio.hpp>
-
 #include <array>
 #include <map>
 #include <thread>
@@ -30,12 +27,7 @@ namespace NetworkLib {
 		void SendToClient(const std::string& message, uint32_t clientID) override;
 		void SendToAllExcept(const std::string& message, uint32_t clientID);
 		void SendToAll(const std::string& message);
-
-        void SendToClient(const boost::asio::mutable_buffer& message, uint32_t clientID) override;
-        void SendToAllExcept(const boost::asio::mutable_buffer& message, uint32_t clientID);
-        void SendToAll(const boost::asio::mutable_buffer& message);
-
-
+        
 		size_t GetClientCount() override;
 		uint32_t GetClientIdByIndex(size_t index) override;
 

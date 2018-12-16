@@ -32,10 +32,10 @@ void serialize(Archive & ar, PlayerInput & p, const unsigned int version)
 
 struct PlayerState
 {
-    float x;
-    float y;
-    float facing; // Facing in radians
-    float speed;
+    float32 x;
+    float32 y;
+    float32 facing; // Facing in radians
+    // float32 speed;
 };
 
 namespace boost {
@@ -47,7 +47,7 @@ void serialize(Archive & ar, PlayerState & p, const unsigned int version)
     ar & p.x;
     ar & p.y;
     ar & p.facing;
-    ar & p.speed;
+   //  ar & p.speed;
 
 }
 
@@ -89,7 +89,7 @@ NETWORKLIB:
    - Server removes the player from the game
    Client::Input
    |MsgType|ID|TimeStamp(float)|InpuTick|Input|
-   - TimeStamp is for checking inactivity of clients by server
+   - TimeStamp is for checking estimating RTT
    - InputTick is used to tie input to certain game moment
    - |Input| = PlayerInput-Struct
 

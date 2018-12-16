@@ -1,5 +1,6 @@
 #include "GameManager.h"
 #include <sstream>
+#include <NetworkLib/Constants.h>
 #include <NetworkLib/Messages.h>
 #include <NetworkLib/Log.h>
 
@@ -16,7 +17,7 @@ std::pair<uint32, bool> GameManager::AddPlayer(PlayerState state, uint32_t endpo
     }
     else
     {
-        for (int i = 0; i < m_playerEndpointIds.size() + 1; ++i)
+        for (unsigned int i = 0; i < m_playerEndpointIds.size() + 1; ++i)
         {
             if (m_playerEndpointIds.find(i) == m_playerEndpointIds.end())
             {
@@ -129,7 +130,7 @@ std::string GameManager::SerializeStatePackage(uint32 id)
 
     //| MsgType | NumPlayers | ServerTick | LPTimeStamp |
     l_archive << NetworkLib::ServerMessageType::State << m_numPlayers;
-    l_archive << GetCurrentTick() << m_currentTime;
+    l_archive << m_timer.GetElapsedTicks() << m_timer.GetElapsedSeconds();
 
     // Add the local player state first
     try
@@ -178,7 +179,7 @@ std::string GameManager::SerializeAcceptPackage(PlayerState state, uint32 id)
 
     l_archive << NetworkLib::ServerMessageType::Accept;     // MsgType 
     l_archive << id;                                        // ID
-    l_archive << GetCurrentTick();                          // Tick
+    l_archive << m_timer.GetElapsedTicks();                 // Tick
     l_archive << state;                                     // State
 
 
@@ -193,6 +194,32 @@ std::string GameManager::SerializeRejectPackage()
 
     return oss.str();
 }
+// TODO: same as in Player.h/cpp. Move player to common code base
+PlayerState GameManager::Tick(const PlayerState & state, const PlayerInput & input)
+{
+    PlayerState l_ret = state;
+    // TODO: Replace l_ret.speed with c_max_speed
+    if (input.up)
+    {
+        l_ret.x += cosf(l_ret.facing) * c_max_speed* seconds_per_tick;
+        l_ret.y += sinf(l_ret.facing) * c_max_speed * seconds_per_tick;
+    }
+    if (input.down)
+    {
+        l_ret.x -= cosf(l_ret.facing) * c_max_speed * seconds_per_tick;
+        l_ret.y -= sinf(l_ret.facing) * c_max_speed * seconds_per_tick;
+    }
+    if (input.left)
+    {
+        l_ret.facing += c_turn_speed * seconds_per_tick;
+    }
+    if (input.right)
+    {
+        l_ret.facing -= c_turn_speed * seconds_per_tick;
+    }
+
+    return l_ret;
+}
 
 void GameManager::UpdateState(const PlayerInput& input, int playerId, float32 dt)
 {
@@ -203,22 +230,21 @@ void GameManager::UpdateState(const PlayerInput& input, int playerId, float32 dt
         // update player
         if (input.left) // turn left
         {
-            l_player.facing += 1.0f * dt;
+            l_player.facing += c_turn_speed * dt;
         }
         if (input.right) // turn right
         {
-            l_player.facing -= 1.0f * dt;
+            l_player.facing -= c_turn_speed * dt;
         }
         if (input.up) // forward
         {
-            l_player.x += cosf(l_player.facing) * 100.0f * dt;
-            l_player.y += sinf(l_player.facing) * 100.0f * dt;
-
+            l_player.x += cosf(l_player.facing) * c_max_speed * dt;
+            l_player.y += sinf(l_player.facing) * c_max_speed * dt;
         }
         if (input.down) // back
         {
-            l_player.x -= cosf(l_player.facing) * 100.0f * dt;
-            l_player.y -= sinf(l_player.facing) * 100.0f * dt;
+            l_player.x -= cosf(l_player.facing) * c_max_speed * dt;
+            l_player.y -= sinf(l_player.facing) * c_max_speed * dt;
         }
      }
     catch (const std::out_of_range& eoor)
@@ -233,18 +259,11 @@ void GameManager::UpdateState(const PlayerInput& input, int playerId, float32 dt
 
 }
 
-uint64 GameManager::GetCurrentTick()
+void GameManager::SendStateToAllClients(NetworkLib::Server& server)
 {
-
-    return static_cast<uint64>(m_currentTime * ticks_per_second);
+    for (auto itr : m_playerEndpointIds)
+    {
+        server.SendToClient(SerializeStatePackage(itr.first), itr.second);
+    }
 }
 
-float32 GameManager::TickToTime(uint64 tick)
-{
-    return tick * seconds_per_tick;
-}
-
-uint64 GameManager::TimeToTick(float32 time)
-{
-    return static_cast<uint64>(time * ticks_per_second);
-}

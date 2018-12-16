@@ -10,16 +10,19 @@ typedef char int8;
 typedef int32 bool32;
 typedef float float32;
 typedef double float64;
+typedef int bool32;
 
 
 static const int NetworkBufferSize = 1024;
 
-typedef int bool32;
+// constants for players
+constexpr float32 c_turn_speed = 1.0f;
+// TODO: not needed constexpr float32 c_acceleration = 10.0f;
+constexpr float32 c_max_speed = 150.0f;
 
 constexpr uint64 packages_per_second = 10;
 constexpr uint64 ticks_per_second = 60;
 constexpr float32 seconds_per_tick = 1.0f / (float32)ticks_per_second;
 constexpr uint16 TOD_MAX_CLIENTS = 4;
 constexpr uint16 TOD_PORT = 8080;
-constexpr uint16 TOD_NUMBER_OF_THREADS = 2;
 

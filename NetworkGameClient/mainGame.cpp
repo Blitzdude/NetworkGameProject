@@ -2,15 +2,13 @@
 #include <boost/asio.hpp>
 #include <NetworkLib/Constants.h>
 #include <NetworkLib/Log.h>
+#include <common/Timer.h>
 
 /*
 * Tag Or Die - client
 * Client states:
 * - Joining
 * - Joined
-* - Game beginning
-* - Game running
-* - Game ended
 * - Disconnected
 * 
 */
@@ -26,20 +24,12 @@ bool MainGame::OnUserCreate()
     return true;
 }
 
-bool MainGame::OnUserUpdate(float fElapsedTime) 
+bool MainGame::OnUserUpdate(float) 
 {
-    m_currentTime += fElapsedTime;
-    m_currentTicks = GetCurrentTick();
+    m_currentTime += m_timer.GetDeltaSeconds();
+    m_timer.Restart();
 
-    Clear(olc::BLACK);
-
-    if (GameState::Joined == m_gameState)
-        Update(fElapsedTime);
-
-    if (m_player.HasInput())
-    {
-        m_connection.Send(m_player.SerializeInput(m_currentTime));
-    }
+    
 
     while (m_connection.HasMessages())
     {
@@ -67,7 +57,7 @@ bool MainGame::OnUserUpdate(float fElapsedTime)
                 if (l_receivedTick >= m_currentTicks)
                 {
                     m_currentTicks = l_receivedTick;
-                    m_currentTime = TickToTime(m_currentTicks);
+                    m_currentTime = m_timer.TickToTime(m_currentTicks);
                 }
 
                 iar >> l_receivedState;
@@ -97,8 +87,6 @@ bool MainGame::OnUserUpdate(float fElapsedTime)
             // Clear the players info on other players
             m_otherPlayers.clear();
             
-            // TODO: make the client remove players no found (or send removal message from server)
-
             // Read the state package
             uint32 l_receivedNumberOfPlayers;
             iar >> l_receivedNumberOfPlayers;
@@ -111,10 +99,9 @@ bool MainGame::OnUserUpdate(float fElapsedTime)
            
             // On receiving the state package, calculate where the client should predict to
             float32 l_rttSec = m_currentTime - l_receivedTimestamp ;
-            uint32 l_ticksToPredict = TimeToTick(l_rttSec);
+            uint64 l_ticksToPredict = m_timer.TimeToTick(l_rttSec);
             l_ticksToPredict += 2; // Add a little for jitter. TODO: make better format for calculating jitter
             m_targetTickNumber = l_ticksToPredict + l_receivedTick;
-            
             
 
             // First id-state pair in state package is for the local player
@@ -128,9 +115,11 @@ bool MainGame::OnUserUpdate(float fElapsedTime)
             //set current tick to server tick and use it to calculate the time
             if (l_receivedTick >= m_currentTicks)
             {   
-                Log::Debug("Server is ahead of us. Resetting time to: ", m_targetTickNumber);
+            
+               // Log::Debug("Server is ahead of us. Resetting time to: ", m_targetTickNumber);
+            
                 m_currentTicks = m_targetTickNumber;
-                m_currentTime = TickToTime(m_currentTicks);
+                m_currentTime = m_timer.TickToTime(m_currentTicks);
             }
             else
             {
@@ -143,8 +132,8 @@ bool MainGame::OnUserUpdate(float fElapsedTime)
                 }
 
                 // insert the new prediction to players prediction history
-                auto l_insertedState = m_player.m_statePredictionHistory.insert(std::make_pair(l_receivedTick, l_receivedState));
-                if (l_insertedState.second) // second is false, if there was a value with key.
+                //auto l_insertedState = m_player.m_statePredictionHistory.insert(std::make_pair(l_receivedTick, l_receivedState));
+                if (m_player.m_statePredictionHistory.find(l_receivedTick) != m_player.m_statePredictionHistory.end()) // second is false, if there was a value with key.
                 {
                     // if a Key is already found, check for error within margin (0.01)
 
@@ -163,29 +152,28 @@ bool MainGame::OnUserUpdate(float fElapsedTime)
                         // remove all values older then changed tick
 
                         // simulate back to the latest tick-state
-                        for (auto itr = m_player.m_statePredictionHistory.find(l_receivedId);
-                                std::next(itr) != m_player.m_statePredictionHistory.end(); 
+                        for (auto itr = m_player.m_statePredictionHistory.find(l_receivedTick);
+                                std::next(itr) != m_player.m_statePredictionHistory.end();
                                 itr++)
                         {
+
                             auto l_loopCurrentState = itr;
-                            uint32 l_loopCurrentTick = itr->first;
+                            uint64 l_loopCurrentTick = itr->first;
                             // get the input the player had for the fixable state
                             auto l_loopCurrentInput = m_player.m_inputPredictionHistory.find(itr->first);
 
                             // next state to be modified
                             auto l_nextState = std::next(itr);
 
-                            // TODO: Need deltaTime, use difference of ticks?
-                            // TODO: LEFTOFF: implement fixing of prediction history.
-                            l_nextState->second = 
-                                m_player.CalculateNewState(l_loopCurrentState->second, 
-                                                           l_loopCurrentInput->second, 
-                                                           TickToTime(l_nextState->first - l_loopCurrentState->first));
+                            m_player.m_statePredictionHistory[l_nextState->first] =
+                                m_player.Tick(l_loopCurrentState->second, l_loopCurrentInput->second );
                         }
-
-                        // Handle any Mispredictions, by simulating back to the present from the corrected state
                     }
-                    
+                }
+                else
+                {
+                    // no prediction found
+                    m_player.m_statePredictionHistory.emplace(l_receivedTick, l_receivedState);
                 }
 
                 
@@ -201,11 +189,12 @@ bool MainGame::OnUserUpdate(float fElapsedTime)
                 auto itr = m_otherPlayers.find(l_OtherId);
                 if ( itr != m_otherPlayers.end())
                 {   
-                    itr->second = l_otherState;
+                    itr->second.first = l_receivedTick; // tick last seen
+                    itr->second.second = l_otherState; // last state
                 }
                 else
                 {
-                    m_otherPlayers.insert(std::make_pair(l_OtherId, l_otherState));
+                    m_otherPlayers.emplace(l_OtherId, std::make_pair(l_receivedTick, l_otherState));
                 }
             }
             break;
@@ -218,7 +207,18 @@ bool MainGame::OnUserUpdate(float fElapsedTime)
         }
     }
 
+    if (GameState::Joined == m_gameState)
+    {
+        Update();
+
+        if (m_player.HasInput())
+        {
+            m_connection.Send(m_player.SerializeInput(m_currentTime, m_currentTicks));
+        }
+    }
+
     Draw();
+    m_timer.WaitUntilNextTick();
 
     return isRunning; // if false -> exits program
 }
@@ -227,7 +227,6 @@ bool MainGame::OnUserDestroy()
 {
     std::ostringstream oss;
     boost::archive::text_oarchive l_archive(oss);
-    // Send a Leave Message to server TODO: send this about 10 times 
     if (m_gameState != GameState::Disconnected)
     {
         // serialize Leave package |msgType|
@@ -235,90 +234,76 @@ bool MainGame::OnUserDestroy()
         l_archive << (uint8)NetworkLib::ClientMessageType::Leave;
         m_connection.Send(oss.str());
     }
-
-
     return true;
 }
 
-void MainGame::Update(float fElapsedTime)
+void MainGame::Update()
 {
-    // TODO: move below to player update and just call this instead
-    // m_player.Update(float fElapsedTime);
 
+    // update player input
     m_player.m_previousInput = m_player.m_input;
     m_player.m_input = {false,false,false,false};
-
-    m_player.m_currentState = m_player.GetNewestState().second;
-    
-    // update player
     if (GetKey(olc::W).bHeld) // forward
     {
         m_player.m_input.up = true;
-        
-        m_player.m_currentState.x += cosf(m_player.m_currentState.facing) * m_player.m_currentState.speed * fElapsedTime;
-        m_player.m_currentState.y += sinf(m_player.m_currentState.facing) * m_player.m_currentState.speed * fElapsedTime;
     }
     if (GetKey(olc::S).bHeld) // back
     {
         m_player.m_input.down = true;
-
-        m_player.m_currentState.x -= cosf(m_player.m_currentState.facing) * m_player.m_currentState.speed * fElapsedTime;
-        m_player.m_currentState.y -= sinf(m_player.m_currentState.facing) * m_player.m_currentState.speed * fElapsedTime;
     }
     if (GetKey(olc::D).bHeld) // turn left
     {
         m_player.m_input.left = true;
-        m_player.m_currentState.facing += 1.0f * fElapsedTime;
     }
     if (GetKey(olc::A).bHeld) // turn right
     {
         m_player.m_input.right = true;
-        m_player.m_currentState.facing -= 1.0f * fElapsedTime;
     }
-
+    m_player.Update(m_targetTickNumber);
+    m_targetTickNumber++;
+    // TODO: we are not necessaricly at the newest state
+    m_player.m_currentState = m_player.GetNewestState().second;
 }
 
 void MainGame::Draw()
 {
-
-    std::string toDraw = "Player Id: " + std::to_string(m_player.m_id);
-    DrawString(0,0, toDraw, olc::WHITE, 4U);
-    // draw player
+    Clear(olc::BLACK);
+    
+    // warning C4244 disabled: possible loss of data. We don't care about losing fractions when drawing
+    #pragma warning(disable:4244)
     if (GameState::Joined == m_gameState)
     {
-    PlayerState l_currentPlayerState = m_player.GetNewestState().second;
+        PlayerState l_currentPlayerState = m_player.GetNewestState().second;
 
-    DrawCircle((int32_t)l_currentPlayerState.x, (int32_t)l_currentPlayerState.y, 10);
+        std::string toDraw = "Player Id: " + std::to_string(m_player.m_id) + " " 
+                            + std::to_string(l_currentPlayerState.x) 
+                            + " : " + std::to_string(l_currentPlayerState.y)
+                            + " : " + std::to_string(l_currentPlayerState.facing);
 
-    DrawLine(l_currentPlayerState.x, l_currentPlayerState.y,
-        l_currentPlayerState.x + cosf(l_currentPlayerState.facing) * 10.0f,
-        l_currentPlayerState.y + sinf(l_currentPlayerState.facing) * 10.0f, olc::MAGENTA);
+
+        DrawString(0,0, toDraw, olc::WHITE, 1);
+
+        std::string fps = "FPS: : " + std::to_string(m_timer.GetFPS());
+        DrawString(0, 80, fps, olc::WHITE, 4);
+
+        // draw local player
+
+            DrawCircle((int32_t)l_currentPlayerState.x, (int32_t)l_currentPlayerState.y, 10);
+
+            DrawLine(l_currentPlayerState.x, l_currentPlayerState.y,
+                l_currentPlayerState.x + cosf(l_currentPlayerState.facing) * 10.0f,
+                l_currentPlayerState.y + sinf(l_currentPlayerState.facing) * 10.0f, olc::MAGENTA);
+
+        // Draw other players
+        for (auto itr : m_otherPlayers)
+        {
+            auto l_state = itr.second.second;
+            DrawCircle(l_state.x, l_state.y, 10, olc::CYAN);
+            DrawLine(l_state.x, l_state.y,
+            l_state.x + cosf(l_state.facing) + cosf(l_state.facing) * 10.0f,
+            l_state.y + sinf(l_state.facing) + sinf(l_state.facing) * 10.0f, olc::MAGENTA);
+        }
     }
-
-    // Draw other players
-    for (auto itr : m_otherPlayers)
-    {
-        DrawCircle(itr.second.x, itr.second.y, 10, olc::CYAN);
-        DrawLine(itr.second.x, itr.second.y,
-        itr.second.x + cosf(itr.second.facing) + cosf(itr.second.facing) * 10.0f,
-        itr.second.y + sinf(itr.second.facing) + sinf(itr.second.facing) * 10.0f, olc::MAGENTA);
-    }
-    
-    
+    // Re-enable warning C4244
+    #pragma warning(default:4244)
 }
-
-float32 MainGame::TickToTime(uint64 tick)
-{
-    return tick * seconds_per_tick;
-}
-
-uint64 MainGame::TimeToTick(float32 time)
-{
-    return time * ticks_per_second;
-}
-
-uint64 MainGame::GetCurrentTick()
-{
-    return static_cast<uint64>(m_currentTime * ticks_per_second); // static casting to stop compiler warning
-}
-

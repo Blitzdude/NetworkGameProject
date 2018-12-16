@@ -1,6 +1,13 @@
 #include <iostream>
 #include <string>
 #include "mainGame.h"
+// #include <chrono>
+// #include <thread>
+// TODO: Clean this main!
+//  typedef std::chrono::duration<int, std::ratio<1, 60>> frame_duration;
+
+
+
 /*
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/archive/binary_oarchive.hpp>
@@ -45,6 +52,18 @@ int main(int argc, char* argv[])
         return 1;
     }
     
+    /*
+    auto start_time = std::chrono::system_clock::now();
+    auto end_time = std::chrono::system_clock::now() + frame_duration(1);
+    for (int i = 0; i < 100; i++)
+    {
+        std::cout << "Hello World" << std::endl;
+    }
+    auto end_loop = std::chrono::system_clock::now();
+    */
+
+
+
     /*
     int numberOfObjects = 30;
 

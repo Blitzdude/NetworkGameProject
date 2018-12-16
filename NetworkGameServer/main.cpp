@@ -10,29 +10,22 @@
 #include <boost/archive/text_oarchive.hpp>
 #include "GameManager.h"
 
+// TODO: Record l_gm.m_timer.GetElapsedTicks() at the beginning of game loop
 
 int main(int argc, char* argv[])
 {
     NetworkLib::Server l_server(8080);
     GameManager l_gm;
-
-    auto l_tp1 = std::chrono::system_clock::now();
-    auto l_tp2 = std::chrono::system_clock::now();
+    uint64 l_currentTick = l_gm.m_timer.GetElapsedTicks();
 
     bool isRunning = true;
     while (isRunning)
     {
         // Handle timing
-        l_tp2 = std::chrono::system_clock::now();
-        std::chrono::duration<float> elapsedTime = l_tp2 - l_tp1;
-        l_tp1 = l_tp2;
 
-        float32 l_fElapsedTime = elapsedTime.count();
-        l_gm.m_currentTime += l_fElapsedTime;
-        l_gm.m_currentTicks = l_gm.GetCurrentTick();
-        uint32 l_lastTickStatesSent = 0;
+        float32 l_fElapsedTime = l_gm.m_timer.GetDeltaSeconds();
+        l_gm.m_timer.Restart();
         
-
         while (l_server.HasMessages())
         {
             // first part is the client id, second is the message
@@ -49,7 +42,7 @@ int main(int argc, char* argv[])
             case NetworkLib::ClientMessageType::Join:
             {
                 // add player to list of players
-                PlayerState l_npState = { 150.0f * l_gm.m_numPlayers ,300.0f,0.0f, 10.0f };
+                PlayerState l_npState = { 200.0f * l_gm.m_numPlayers ,300.0f, 0.0f};
                 auto l_np = l_gm.AddPlayer(l_npState, l_msg.second);
                 if (l_np.second)
                 {
@@ -58,13 +51,7 @@ int main(int argc, char* argv[])
                     l_server.SendToClient(l_gm.SerializeAcceptPackage(l_npState, l_np.first),
                                           l_gm.m_playerEndpointIds[l_np.first]);
 
-                    // Send server package to clients
-                    // TODO: Implement SendStateToAllClients
-                    for (auto itr : l_gm.m_playerEndpointIds)
-                    {
-                        l_server.SendToClient(l_gm.SerializeStatePackage(itr.first), itr.second);
-                    }
-
+                    l_gm.SendStateToAllClients(l_server);
                 }
                 else
                 {
@@ -80,36 +67,55 @@ int main(int argc, char* argv[])
                 // Remove the player from player states
                 l_gm.RemovePlayerByEndpoint(l_msg.second);
 
-                // Send server package to clients
-                // TODO: Implement SendStateToAllClients
-                for (auto itr : l_gm.m_playerEndpointIds)
-                {
-                    l_server.SendToClient(l_gm.SerializeStatePackage(itr.first), itr.second);
-                }
+                l_gm.SendStateToAllClients(l_server);
 
                 break;
             }
             case NetworkLib::ClientMessageType::Input:
             {
-                // Log::Debug("Player input get!");
                 uint32 l_receivedId;
                 iar >> l_receivedId;
-                PlayerInput l_receivedInput;
-                iar >> l_receivedInput;
 
                 float32 l_receivedTimestamp;
                 iar >> l_receivedTimestamp; // timestamp received from client, used to estimate RTT.
 
+                uint64 l_receivedTick;
+                iar >> l_receivedTick;
+
+                PlayerInput l_receivedInput;
+                iar >> l_receivedInput;
+                // the input from player needs to be from the future
+                if (l_receivedTick >= l_currentTick)
+                {
+                    const uint32 c_max_input_buffer_capacity = ticks_per_second;
+                    // if input is too far ahead
+                    if (l_receivedTick - l_currentTick < c_max_input_buffer_capacity)
+                    {
+                        // add tick to multimap, including the pair
+                        l_gm.m_inputBuffer.emplace(l_receivedTick, 
+                                                    std::make_pair(l_receivedId, l_receivedInput));
+                    }
+                    else
+                    {
+                        // the input is too far ahead to consider
+                        /*
+                        Log::Debug("Input ignored. Too far ahead: ", l_receivedTick,
+                            " we are at: ", l_currentTick);
+                        */
+                    }
+                }
+                else
+                {
+                    // the input is too old to consider
+                    Log::Debug("Input ignored. behind: ", l_receivedTick,
+                        " we are at: ", l_currentTick);
+                }
+
+                // if the player is in the game, add his input to the map
                 auto l_ptr = l_gm.m_playerInputs.find(l_receivedId);
                 if (l_gm.m_playerInputs.find(l_receivedId) != l_gm.m_playerInputs.end())
                 {
                     l_gm.m_playerInputs[l_receivedId] = l_receivedInput;
-                }
-                
-                // Send server package to clients
-                for (auto itr : l_gm.m_playerEndpointIds)
-                {
-                    l_server.SendToClient(l_gm.SerializeStatePackage(itr.first), itr.second);
                 }
                 
                 break;
@@ -120,27 +126,43 @@ int main(int argc, char* argv[])
                 assert(0);
                 break;
             }
-
         }
 
-        // update client position on server
-        for (auto itr : l_gm.m_playerStates)
+        // update client inputs from the input buffers
+        // get all input pairs for current tick
+        auto l_range = l_gm.m_inputBuffer.equal_range(l_currentTick);
+        for (auto itr = l_range.first; itr != l_range.second; ++itr)
         {
-            l_gm.UpdateState(l_gm.m_playerInputs.at(itr.first), itr.first, l_fElapsedTime);
+            // for each pair, set the current input for the current player
+            l_gm.m_playerInputs[itr->second.first] = itr->second.second;
+        }
+        
+        // now that inputs for range of tick have been appliend, remove all
+        // elements with key older then current tick
+        l_gm.m_inputBuffer.erase(l_gm.m_inputBuffer.begin(), l_range.second);
+
+        // update client position on server
+        for (auto &itr : l_gm.m_playerStates)
+        {
+            itr.second = l_gm.Tick(itr.second, l_gm.m_playerInputs.at(itr.first));
         }
 
         // Send game state server package to clients 10 times a second        
-        if (l_gm.m_currentTicks >= l_lastTickStatesSent + (ticks_per_second / packages_per_second));
+        if (l_currentTick >= l_gm.m_lastTickStatesSent + (ticks_per_second / packages_per_second))
         {
-            for (auto itr : l_gm.m_playerEndpointIds)
-            {
-                l_server.SendToClient(l_gm.SerializeStatePackage(itr.first), itr.second);
-            }
-            l_lastTickStatesSent = l_gm.m_currentTicks;
+            l_gm.SendStateToAllClients(l_server);
+            l_gm.m_lastTickStatesSent = l_currentTick;
         }
-        
+        // DEBUG: print player positions
+        for (auto itr : l_gm.m_playerStates)
+        {
+            Log::Debug("Player: ", itr.first, itr.second.x, itr.second.y, itr.second.facing);
+        }
 
-    }
+        l_currentTick++;
+        // caps the framerate to number of ticks (default 60)
+        l_gm.m_timer.WaitUntilNextTick();
+    } //! while
 
 
     // Average byte size of message
@@ -152,7 +174,6 @@ int main(int argc, char* argv[])
             , "=", l_server.GetStatistics().GetReceivedBytes()
             / l_server.GetStatistics().GetReceivedMessages());
     }
-
-    std::cin.get();
+    
     return 0;
 }

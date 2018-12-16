@@ -4,6 +4,7 @@
 #include <NetworkLib/Messages.h>
 #include <NetworkLib/Client.h>
 #include "olcPixelGameEngine.h"
+#include <common/Timer.h>
 
 #include "Player.h"
 
@@ -36,18 +37,16 @@ public:
     bool OnUserDestroy() override;
 private:
     
-    void Update(float fElapsedTime);
+    void Update();
     void Draw();
 
-
-    uint64 GetCurrentTick();
-    float32 TickToTime(uint64 tick);
-    uint64 TimeToTick(float32 time);
-    
     NetworkLib::Client m_connection;
 
+    Timer m_timer;
+
     Player m_player;
-    std::map<uint32, PlayerState> m_otherPlayers;
+    // other player first->slot, second->(tick, state)
+    std::map<uint32, std::pair<uint64,PlayerState>> m_otherPlayers;
 
     float32 m_currentTime = 0.0f;
     uint64 m_currentTicks = 0;
