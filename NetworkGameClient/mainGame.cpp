@@ -12,16 +12,10 @@
 * - Joining
 * - Joined
 * - Disconnected
-* 
 */
 bool MainGame::OnUserCreate() 
 {
-    std::ostringstream oss;
-    boost::archive::text_oarchive l_archive(oss);
-    // Send a Join Request to server
-    l_archive << NetworkLib::ClientMessageType::Join;
-
-    m_connection.Send(oss.str());
+    m_connection.Send(SerializeJoinPackage());
 
     return true;
 }
@@ -30,8 +24,6 @@ bool MainGame::OnUserUpdate(float)
 {
     // DeltaTime not used, just called to update fps-tracking
     float32 l_deltaTime = m_timer.GetDeltaSeconds();
-    //m_currentTime += l_deltaTime;
-   //  m_currentTime = m_timer.GetElapsedSeconds();
     m_timer.Restart();
 
     while (m_connection.HasMessages())
@@ -52,7 +44,6 @@ bool MainGame::OnUserUpdate(float)
                 // type id tick playestate
                 uint32 l_receivedSlotId;
                 iar >> l_receivedSlotId;
-
 
                 Log::Debug("Joining game ", l_receivedSlotId);
 
@@ -76,8 +67,7 @@ bool MainGame::OnUserUpdate(float)
         }
         case NetworkLib::ServerMessageType::State:
         {
-            // Clear the players info on other players
-            // m_otherPlayersLastKnownState.clear();
+            // Reset deltaCounter for lerping
             m_deltaLerp = 0;
             // Read the state package
             uint32 l_receivedNumberOfPlayers;
@@ -103,7 +93,7 @@ bool MainGame::OnUserUpdate(float)
             PlayerState l_receivedState;
             iar >> l_receivedState;
 
-            // DEBUG: record local players server state for ghosting
+            // record local players server state for ghosting
             m_localPlayerServerState = l_receivedState;
             // On the first message or if server is ahead of us, 
             //set current tick to server tick and use it to calculate the time
@@ -256,9 +246,9 @@ void MainGame::Update()
         float32 t1 = static_cast<float32>(m_otherPlayersLastKnownState.at(itr.first).first);
         
         itr.second = LerpPlayerState(itr.second, m_otherPlayersLastKnownState.at(itr.first).second
-            , t1 - packages_per_second
+            , t1 - c_packages_per_second
             , t1
-            , (t1 - packages_per_second) + m_deltaLerp);
+            , (t1 - c_packages_per_second) + m_deltaLerp);
     }
 
     while (m_currentTicks < m_targetTickNumber)
@@ -286,26 +276,34 @@ void MainGame::Draw()
                             + " : " + std::to_string(l_currentPlayerState.y)
                             + " : " + std::to_string(l_currentPlayerState.facing);
 
-
         DrawString(0,0, toDraw, olc::WHITE, 1);
 
         std::string fps = "FPS: : " + std::to_string(m_timer.GetFPS());
-        DrawString(0, ScreenHeight(), fps, olc::WHITE, 1);
+        DrawString(0, ScreenHeight() - 12, fps, olc::WHITE, 1);
 
-        // draw local player
-        DrawCircle((int32_t)l_currentPlayerState.x, (int32_t)l_currentPlayerState.y, 10);
-
-        DrawLine(l_currentPlayerState.x, l_currentPlayerState.y,
-            l_currentPlayerState.x + cosf(l_currentPlayerState.facing) * 10.0f,
-            l_currentPlayerState.y + sinf(l_currentPlayerState.facing) * 10.0f, olc::MAGENTA);
         // Draw local players server location
-
         DrawCircle((int32_t)m_localPlayerServerState.x, (int32_t)m_localPlayerServerState.y, 10, olc::RED);
 
         DrawLine(m_localPlayerServerState.x, m_localPlayerServerState.y,
             m_localPlayerServerState.x + cosf(m_localPlayerServerState.facing) * 10.0f,
             m_localPlayerServerState.y + sinf(m_localPlayerServerState.facing) * 10.0f, olc::DARK_RED);
 
+        // draw local players current position
+        DrawCircle((int32_t)l_currentPlayerState.x, (int32_t)l_currentPlayerState.y, 10);
+
+        DrawLine(l_currentPlayerState.x, l_currentPlayerState.y,
+            l_currentPlayerState.x + cosf(l_currentPlayerState.facing) * 10.0f,
+            l_currentPlayerState.y + sinf(l_currentPlayerState.facing) * 10.0f, olc::MAGENTA);
+
+        // Draw where other players are lerping to
+        for (auto itr : m_otherPlayersLastKnownState)
+        {
+            auto l_state = itr.second.second;
+            DrawCircle(l_state.x, l_state.y, 10, olc::GREEN);
+            DrawLine(l_state.x, l_state.y,
+            l_state.x + cosf(l_state.facing) + cosf(l_state.facing) * 10.0f,
+            l_state.y + sinf(l_state.facing) + sinf(l_state.facing) * 10.0f, olc::DARK_GREEN);
+        }
 
         // Draw other players
         for (auto itr : m_otherPlayersCurrentPosition)
@@ -316,17 +314,7 @@ void MainGame::Draw()
             l_state.x + cosf(l_state.facing) + cosf(l_state.facing) * 10.0f,
             l_state.y + sinf(l_state.facing) + sinf(l_state.facing) * 10.0f, olc::MAGENTA);
         }
-        // Draw where other players are lerping to
-        for (auto itr : m_otherPlayersLastKnownState)
-        {
 
-            auto l_state = itr.second.second;
-            DrawCircle(l_state.x, l_state.y, 10, olc::GREEN);
-            DrawLine(l_state.x, l_state.y,
-            l_state.x + cosf(l_state.facing) + cosf(l_state.facing) * 10.0f,
-            l_state.y + sinf(l_state.facing) + sinf(l_state.facing) * 10.0f, olc::DARK_GREEN);
-
-        }
     }
     // Re-enable warning C4244
     #pragma warning(default:4244)
@@ -348,6 +336,16 @@ PlayerState MainGame::LerpPlayerState(const PlayerState & a, const PlayerState &
     l_ret.facing = a.facing + fraction * (b.facing - a.facing);
 
     return l_ret;
+}
+
+std::string MainGame::SerializeJoinPackage()
+{
+    std::ostringstream oss;
+    boost::archive::text_oarchive l_archive(oss);
+    // Send a Join Request to server
+    l_archive << NetworkLib::ClientMessageType::Join;
+
+    return oss.str();
 }
 
 std::string MainGame::SerializeLeavePackage()

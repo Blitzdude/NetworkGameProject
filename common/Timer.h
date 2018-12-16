@@ -3,7 +3,7 @@
 #include <deque>
 #include <NetworkLib/Constants.h>
 
-typedef std::chrono::duration<int, std::ratio<1, ticks_per_second>> frame_duration;
+typedef std::chrono::duration<int, std::ratio<1, c_ticks_per_second>> frame_duration;
 
 class Timer
 {
@@ -11,8 +11,9 @@ public:
     Timer();
     ~Timer();
 
-    // get current system time, and set that as now
-    // used with GetDeltaTicks();
+    /* get current system time, and set that as now
+       used with GetDeltaTicks();
+    */
     void Restart();
     // returns the amount of seconds from the start of the timer
     float32 GetElapsedSeconds();
@@ -25,7 +26,7 @@ public:
     // returns the update fps
     float32 GetFPS();
     //Make this function cause the thread to wait until a certain time point
-    //used to cap framerates 
+    //used to cap framerate
     void WaitUntilNextTick();
 
     float32 TickToTime(uint32 tick);
@@ -35,6 +36,5 @@ private:
     std::chrono::system_clock::time_point startOfTimer;
     std::chrono::system_clock::time_point startPoint;
    
-
     std::deque<float32> m_deltaTimes;
 };

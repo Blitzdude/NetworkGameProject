@@ -15,13 +15,12 @@ typedef int bool32;
 
 static const int NetworkBufferSize = 1024;
 
-// constants for players
 constexpr float32 c_turn_speed = 3.0f;
-constexpr float32 c_max_speed = 150.0f;
+constexpr float32 c_speed = 150.0f;
 
-constexpr uint64 packages_per_second = 10;
-constexpr uint64 ticks_per_second = 60;
-constexpr float32 seconds_per_tick = 1.0f / (float32)ticks_per_second;
+constexpr uint64 c_packages_per_second = 10;
+constexpr uint64 c_ticks_per_second = 60;
+constexpr float32 c_seconds_per_tick = 1.0f / (float32)c_ticks_per_second;
 constexpr uint16 TOD_MAX_CLIENTS = 4;
 constexpr uint16 TOD_PORT = 8080;
 

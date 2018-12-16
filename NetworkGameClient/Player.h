@@ -22,8 +22,6 @@ public:
     // Returns the state with the largest tick number
     std::pair<uint32, PlayerState> GetNewestState();
     std::pair<uint32, PlayerState> GetOldestState();
-    // returns false, if either state or input already exists for tick
-    bool InsertState(const PlayerState& state, const PlayerInput& input, uint32 tick);
     // calculates state for next tick based on state and input
     PlayerState Tick(const PlayerState& state, const PlayerInput& input);
     // ticks the player, until target Tick is reached

@@ -42,12 +42,12 @@ float32 Timer::GetDeltaSeconds()
 
 uint32 Timer::GetElapsedTicks()
 {
-    return static_cast<uint32>(GetElapsedSeconds() * ticks_per_second);
+    return static_cast<uint32>(GetElapsedSeconds() * c_ticks_per_second);
 }
 
 uint32 Timer::GetDeltaTicks()
 {
-    return static_cast<uint32>(GetDeltaSeconds() * ticks_per_second);
+    return static_cast<uint32>(GetDeltaSeconds() * c_ticks_per_second);
 }
 float32 Timer::GetFPS()
 {
@@ -70,11 +70,11 @@ void Timer::WaitUntilNextTick()
 
 float32 Timer::TickToTime(uint32 tick)
 {
-    return tick * seconds_per_tick;
+    return tick * c_seconds_per_tick;
 }
 
 uint32 Timer::TimeToTick(float32 time)
 {
     // static casting to stop compiler warning C4244
-    return static_cast<uint32>(time * ticks_per_second);
+    return static_cast<uint32>(time * c_ticks_per_second);
 }

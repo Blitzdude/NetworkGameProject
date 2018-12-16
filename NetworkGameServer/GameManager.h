@@ -26,28 +26,28 @@ public:
     // first->playerId, second->latest received timestamp
     std::map<uint32, float32> m_clientTimeStamps;
 
-
     uint32 m_lastTickStatesSent = 0;
     uint32 m_currentTick = 0;
 
 public:
+    Timer m_timer;
+    
     // Adds a new player to the game, return: first-> id, second->success
     std::pair<uint32, bool> AddPlayer(PlayerState state, uint32_t endpoint);
-    // returns false if error during removal
+    // Remove player, returns false if error during removal
     bool RemovePlayer(uint32 id);
     void RemovePlayerByEndpoint(uint32 endpoint);
 
-    // serialization functions return the msg string
+    // serialization functions return msg string
     std::string SerializeStatePackage(uint32 id);
     std::string SerializeAcceptPackage(PlayerState state, uint32 id);
     std::string SerializeRejectPackage();
 
+    // tick local player and advance him in the simulation
     PlayerState Tick(const PlayerState& state, const PlayerInput& input);
     
-    void SendStateToAllClients(NetworkLib::Server& server ); // TODO: const correctness?
-
-
-    Timer m_timer;
+    // Sends all players in game all states needed
+    void SendStateToAllClients(NetworkLib::Server& server ); 
 
 private:
 };

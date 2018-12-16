@@ -4,7 +4,7 @@
 #include <NetworkLib/Messages.h>
 #include <NetworkLib/Log.h>
 
-// Add new player, returns true if succesful, otherwise false
+
 std::pair<uint32, bool> GameManager::AddPlayer(PlayerState state, uint32_t endpoint)
 {
     bool l_success = true;
@@ -121,14 +121,11 @@ void GameManager::RemovePlayerByEndpoint(uint32 endpoint)
     RemovePlayer(l_id); 
 }
 
-/* State packackage structure:
-| msgType | tickNum | Client timestamp | LocalPlayerState | Other PlayerState | Other PlayerState | ... */
 std::string GameManager::SerializeStatePackage(uint32 id)
 {
     std::ostringstream oss;
     boost::archive::text_oarchive l_archive(oss);
 
-    //| MsgType | NumPlayers | ServerTick | LPTimeStamp |
     l_archive << NetworkLib::ServerMessageType::State << m_numPlayers
     << m_currentTick << m_clientTimeStamps[id];
 
@@ -144,7 +141,6 @@ std::string GameManager::SerializeStatePackage(uint32 id)
 
         uint32 l_localId = l_localPlayer->first;
         PlayerState l_localState = l_localPlayer->second;
-        // Log::Debug("Local", l_localId, l_localState.x, l_localState.y);
         l_archive << l_localId << l_localState;
 
 
@@ -176,8 +172,8 @@ std::string GameManager::SerializeAcceptPackage(PlayerState state, uint32 id)
     std::ostringstream oss;
     boost::archive::text_oarchive l_archive(oss);
 
-    l_archive << NetworkLib::ServerMessageType::Accept;     // MsgType 
-    l_archive << id;                                        // ID
+    l_archive << (uint8)NetworkLib::ServerMessageType::Accept;
+    l_archive << id;                                        
     return oss.str();
 }
 
@@ -195,21 +191,21 @@ PlayerState GameManager::Tick(const PlayerState & state, const PlayerInput & inp
     PlayerState l_ret = state;
     if (input.up)
     {
-        l_ret.x += cosf(l_ret.facing) * c_max_speed* seconds_per_tick;
-        l_ret.y += sinf(l_ret.facing) * c_max_speed * seconds_per_tick;
+        l_ret.x += cosf(l_ret.facing) * c_speed* c_seconds_per_tick;
+        l_ret.y += sinf(l_ret.facing) * c_speed * c_seconds_per_tick;
     }
     if (input.down)
     {
-        l_ret.x -= cosf(l_ret.facing) * c_max_speed * seconds_per_tick;
-        l_ret.y -= sinf(l_ret.facing) * c_max_speed * seconds_per_tick;
+        l_ret.x -= cosf(l_ret.facing) * c_speed * c_seconds_per_tick;
+        l_ret.y -= sinf(l_ret.facing) * c_speed * c_seconds_per_tick;
     }
     if (input.left)
     {
-        l_ret.facing += c_turn_speed * seconds_per_tick;
+        l_ret.facing += c_turn_speed * c_seconds_per_tick;
     }
     if (input.right)
     {
-        l_ret.facing -= c_turn_speed * seconds_per_tick;
+        l_ret.facing -= c_turn_speed * c_seconds_per_tick;
     }
 
     return l_ret;

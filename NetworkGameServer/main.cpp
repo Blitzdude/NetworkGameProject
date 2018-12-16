@@ -8,11 +8,18 @@
 #include <NetworkLib/Statistics.h>
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/archive/text_oarchive.hpp>
+#include <boost/lexical_cast.hpp>
 #include "GameManager.h"
 
 int main(int argc, char* argv[])
 {
-    NetworkLib::Server l_server(8080);
+    
+    if (argc != 2)
+    {
+        std::cout << "Usage: Network <port>\n";
+        return 1;
+    }
+    NetworkLib::Server l_server(boost::lexical_cast<int>(argv[1]));
     GameManager l_gm;
     l_gm.m_currentTick = 0;
 
@@ -21,7 +28,6 @@ int main(int argc, char* argv[])
     {
         // Handle timing
 
-        // float32 l_fElapsedTime = l_gm.m_timer.GetDeltaSeconds();
         l_gm.m_timer.Restart();
         while (l_server.HasMessages())
         {
@@ -82,7 +88,7 @@ int main(int argc, char* argv[])
                 // the input from player needs to be from the future
                 if (l_receivedTick >= l_gm.m_currentTick)
                 {
-                    const uint32 c_max_input_buffer_capacity = ticks_per_second * 2;
+                    const uint32 c_max_input_buffer_capacity = c_ticks_per_second * 2;
                     if (l_receivedTick - l_gm.m_currentTick < c_max_input_buffer_capacity)
                     {
                         // add tick to multimap, including the pair
@@ -137,7 +143,7 @@ int main(int argc, char* argv[])
         }
 
         // Send game state server package to clients 10 times a second        
-        if (l_gm.m_currentTick >= l_gm.m_lastTickStatesSent + (ticks_per_second / packages_per_second))
+        if (l_gm.m_currentTick >= l_gm.m_lastTickStatesSent + (c_ticks_per_second / c_packages_per_second))
         {
             l_gm.SendStateToAllClients(l_server);
             l_gm.m_lastTickStatesSent = l_gm.m_currentTick;
@@ -146,8 +152,7 @@ int main(int argc, char* argv[])
         l_gm.m_currentTick++;
         // caps the framerate to number of ticks (default 60)
         l_gm.m_timer.WaitUntilNextTick();
-    } //! while
-
+    } 
 
     // Average byte size of message
     if (l_server.GetStatistics().GetReceivedMessages() != 0) // stop division by zero error

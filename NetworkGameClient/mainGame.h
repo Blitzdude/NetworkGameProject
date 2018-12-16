@@ -40,7 +40,9 @@ private:
     void Update();
     void Draw();
     PlayerState LerpPlayerState(const PlayerState& a, const PlayerState& b, float32 t0, float32 t1, float32 t);
+    // used to lerp other players ahead
     uint32 m_deltaLerp = 0;
+    std::string SerializeJoinPackage();
     std::string SerializeLeavePackage();
     
     NetworkLib::Client m_connection;

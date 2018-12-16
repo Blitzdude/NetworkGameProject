@@ -27,7 +27,6 @@ std::string Player::SerializeInput(float32 time, uint32 tick)
     std::ostringstream oss;
     boost::archive::text_oarchive l_archive(oss);
     
-    //  type: id: input: time
     l_archive << (uint8)NetworkLib::ClientMessageType::Input << m_id << time << tick << m_input;
 
     return oss.str();
@@ -49,34 +48,26 @@ std::pair<uint32, PlayerState> Player::GetOldestState()
     return ret;
 }
 
-bool Player::InsertState(const PlayerState & state, const PlayerInput & input, uint32 tick)
-{
-    bool success;
-    success = m_statePredictionHistory.insert(std::make_pair(tick, state)).second;
-    success = m_inputPredictionHistory.insert(std::make_pair(tick, input)).second;
-    return success;
-}
-
 PlayerState Player::Tick(const PlayerState& state, const PlayerInput& input)
 {
     PlayerState l_ret = state;
     if (input.up)
     {
-        l_ret.x += cosf(l_ret.facing) * c_max_speed * seconds_per_tick;
-        l_ret.y += sinf(l_ret.facing) * c_max_speed * seconds_per_tick;
+        l_ret.x += cosf(l_ret.facing) * c_speed * c_seconds_per_tick;
+        l_ret.y += sinf(l_ret.facing) * c_speed * c_seconds_per_tick;
     }
     if (input.down)
     {
-        l_ret.x -= cosf(l_ret.facing) * c_max_speed * seconds_per_tick;
-        l_ret.y -= sinf(l_ret.facing) * c_max_speed * seconds_per_tick;
+        l_ret.x -= cosf(l_ret.facing) * c_speed * c_seconds_per_tick;
+        l_ret.y -= sinf(l_ret.facing) * c_speed * c_seconds_per_tick;
     }
     if (input.left)
     {
-        l_ret.facing += c_turn_speed * seconds_per_tick;
+        l_ret.facing += c_turn_speed * c_seconds_per_tick;
     }
     if (input.right)
     {
-        l_ret.facing -= c_turn_speed * seconds_per_tick;
+        l_ret.facing -= c_turn_speed * c_seconds_per_tick;
     }
 
     return l_ret;
@@ -89,7 +80,7 @@ void Player::Update(uint32 targetTick)
     if (l_newestTick < targetTick)
     {
         // if the map is too large, remove the last element
-        if ( m_statePredictionHistory.size() > ticks_per_second)
+        if ( m_statePredictionHistory.size() > c_ticks_per_second)
         {
             // Older elements are in front of the map
             m_statePredictionHistory.erase(m_statePredictionHistory.begin());
