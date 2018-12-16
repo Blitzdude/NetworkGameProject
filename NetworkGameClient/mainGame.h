@@ -39,18 +39,24 @@ private:
     
     void Update();
     void Draw();
-
+    PlayerState LerpPlayerState(const PlayerState& a, const PlayerState& b, float32 t0, float32 t1, float32 t);
+    uint32 m_deltaLerp = 0;
+    std::string SerializeLeavePackage();
+    
     NetworkLib::Client m_connection;
 
     Timer m_timer;
 
     Player m_player;
-    // other player first->slot, second->(tick, state)
-    std::map<uint32, std::pair<uint64,PlayerState>> m_otherPlayers;
+    std::map<uint32, PlayerState> m_otherPlayersCurrentPosition;
+    // other player first->slot, second->list(tick, state)
+    std::map<uint32, std::pair<uint32,PlayerState>> m_otherPlayersLastKnownState;
 
-    float32 m_currentTime = 0.0f;
-    uint64 m_currentTicks = 0;
-    uint64 m_targetTickNumber = 0;
+    PlayerState m_localPlayerServerState;
+
+    //float32 m_currentTime = 0.0f;
+    uint32 m_currentTicks = 0;
+    uint32 m_targetTickNumber = 0;
 
     GameState m_gameState = GameState::Joining;
 

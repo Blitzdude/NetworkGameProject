@@ -1,5 +1,6 @@
 #include "Timer.h"
 #include <thread>
+#include <NetworkLib/Log.h>
 Timer::Timer()
     : m_deltaTimes(10)
 {
@@ -39,14 +40,14 @@ float32 Timer::GetDeltaSeconds()
     return deltaTime.count();
 }
 
-uint64 Timer::GetElapsedTicks()
+uint32 Timer::GetElapsedTicks()
 {
-    return static_cast<uint64>(GetElapsedSeconds() * ticks_per_second);
+    return static_cast<uint32>(GetElapsedSeconds() * ticks_per_second);
 }
 
-uint64 Timer::GetDeltaTicks()
+uint32 Timer::GetDeltaTicks()
 {
-    return static_cast<uint64>(GetDeltaSeconds() * ticks_per_second);
+    return static_cast<uint32>(GetDeltaSeconds() * ticks_per_second);
 }
 float32 Timer::GetFPS()
 {
@@ -63,17 +64,17 @@ float32 Timer::GetFPS()
 // Wait until designated time point
 void Timer::WaitUntilNextTick()
 {   
-     auto endPoint = (startPoint + frame_duration(1));
+     auto endPoint = startPoint + frame_duration{1};
      std::this_thread::sleep_until(endPoint);
 }
 
-float32 Timer::TickToTime(uint64 tick)
+float32 Timer::TickToTime(uint32 tick)
 {
     return tick * seconds_per_tick;
 }
 
-uint64 Timer::TimeToTick(float32 time)
+uint32 Timer::TimeToTick(float32 time)
 {
     // static casting to stop compiler warning C4244
-    return static_cast<uint64>(time * ticks_per_second);
+    return static_cast<uint32>(time * ticks_per_second);
 }

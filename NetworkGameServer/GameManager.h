@@ -20,11 +20,15 @@ public:
     // first->playerId, second->input
     std::map<uint32, PlayerInput> m_playerInputs;
     // first->playerId, second->inputbuffer(tick, input)
-    std::multimap<uint64, std::pair<uint32, PlayerInput>> m_inputBuffer;
+    std::multimap<uint32, std::pair<uint32, PlayerInput>> m_inputBuffer;
     // first->playerId, second->PlayerState
     std::map<uint32, PlayerState> m_playerStates;
+    // first->playerId, second->latest received timestamp
+    std::map<uint32, float32> m_clientTimeStamps;
 
-    uint64 m_lastTickStatesSent = 0;
+
+    uint32 m_lastTickStatesSent = 0;
+    uint32 m_currentTick = 0;
 
 public:
     // Adds a new player to the game, return: first-> id, second->success
@@ -39,7 +43,7 @@ public:
     std::string SerializeRejectPackage();
 
     PlayerState Tick(const PlayerState& state, const PlayerInput& input);
-    void UpdateState(const PlayerInput& input, int playerId, float32 dt);
+    
     void SendStateToAllClients(NetworkLib::Server& server ); // TODO: const correctness?
 
 

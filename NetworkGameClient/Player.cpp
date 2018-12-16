@@ -21,7 +21,7 @@ bool Player::HasInput()
             m_input.right != m_previousInput.right);
 }
 
-std::string Player::SerializeInput(float32 time, uint64 tick)
+std::string Player::SerializeInput(float32 time, uint32 tick)
 {
 
     std::ostringstream oss;
@@ -34,22 +34,22 @@ std::string Player::SerializeInput(float32 time, uint64 tick)
 }
 
 // Newest state is at the back, hence rbegin()
-std::pair<uint64, PlayerState> Player::GetNewestState()
+std::pair<uint32, PlayerState> Player::GetNewestState()
 {
     auto itr = m_statePredictionHistory.rbegin();
-    std::pair<uint64, PlayerState> ret = std::make_pair(itr->first, itr->second);
+    std::pair<uint32, PlayerState> ret = std::make_pair(itr->first, itr->second);
     return ret;
 }
 
 // oldest state is at the front, hence begin()
-std::pair<uint64, PlayerState> Player::GetOldestState()
+std::pair<uint32, PlayerState> Player::GetOldestState()
 {
     auto itr = m_statePredictionHistory.begin();
-    std::pair<uint64, PlayerState> ret = std::make_pair(itr->first, itr->second);
+    std::pair<uint32, PlayerState> ret = std::make_pair(itr->first, itr->second);
     return ret;
 }
 
-bool Player::InsertState(const PlayerState & state, const PlayerInput & input, uint64 tick)
+bool Player::InsertState(const PlayerState & state, const PlayerInput & input, uint32 tick)
 {
     bool success;
     success = m_statePredictionHistory.insert(std::make_pair(tick, state)).second;
@@ -60,7 +60,6 @@ bool Player::InsertState(const PlayerState & state, const PlayerInput & input, u
 PlayerState Player::Tick(const PlayerState& state, const PlayerInput& input)
 {
     PlayerState l_ret = state;
-    // TODO: Replace l_ret.speed with c_max_speed
     if (input.up)
     {
         l_ret.x += cosf(l_ret.facing) * c_max_speed * seconds_per_tick;
@@ -83,10 +82,11 @@ PlayerState Player::Tick(const PlayerState& state, const PlayerInput& input)
     return l_ret;
 }
 // ticks the player, until target Tick is reached
-void Player::Update(uint64 targetTick)
-{
-    uint64 l_newestTick = GetNewestState().first;
-    while (l_newestTick < targetTick)
+void Player::Update(uint32 targetTick)
+{   
+    uint32 l_newestTick = GetNewestState().first;
+    // TODO: slow, or speed up client instead of calculating all states
+    if (l_newestTick < targetTick)
     {
         // if the map is too large, remove the last element
         if ( m_statePredictionHistory.size() > ticks_per_second)
@@ -96,8 +96,9 @@ void Player::Update(uint64 targetTick)
         }
 
         // predict the tick and add a new state to state prediction buffer 
+        l_newestTick++;
         PlayerState l_newState = Tick(GetNewestState().second, m_input);
-        m_statePredictionHistory.emplace(++l_newestTick, l_newState);
+        m_statePredictionHistory.emplace(l_newestTick, l_newState);
         m_inputPredictionHistory.emplace(l_newestTick, m_input);
     }
 }

@@ -47,8 +47,6 @@ void serialize(Archive & ar, PlayerState & p, const unsigned int version)
     ar & p.x;
     ar & p.y;
     ar & p.facing;
-   //  ar & p.speed;
-
 }
 
 } // namespace serialization
@@ -58,22 +56,19 @@ void serialize(Archive & ar, PlayerState & p, const unsigned int version)
 // -------------------------------------------
 TODO:
 COMMON: 
+- Move Timer and This header to NetworkLib files, easier that way
 - InputState can be packed into a single bool32, decreasing
     the amount of packages sent form client to server
 - rename variables to follow a common coding convention
-- Separate timing functions into their own class (Timer)
 CLIENT:
 - Encapsulate members
 - Client side prediction.
 - Timeout, when No response from server is detected
 SERVER:
-- Send 10 snapshots per second (every 6 ticks)
-- Parsing of predictions too old and new.
 - Encapsulate members
 - When server closes, send close message to rest of players.
 - Timeouts when no response from client is detected
 NETWORKLIB:
-- Remove unused functions (I.e. Send(mutable_buffer) )
 
 // -------------------------------------------
    Package Structures

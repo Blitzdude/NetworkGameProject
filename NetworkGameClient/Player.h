@@ -17,23 +17,23 @@ public:
 
     bool HasInput();
 
-    std::string SerializeInput(float32 time, uint64 tick);
+    std::string SerializeInput(float32 time, uint32 tick);
 
     // Returns the state with the largest tick number
-    std::pair<uint64, PlayerState> GetNewestState();
-    std::pair<uint64, PlayerState> GetOldestState();
+    std::pair<uint32, PlayerState> GetNewestState();
+    std::pair<uint32, PlayerState> GetOldestState();
     // returns false, if either state or input already exists for tick
-    bool InsertState(const PlayerState& state, const PlayerInput& input, uint64 tick);
+    bool InsertState(const PlayerState& state, const PlayerInput& input, uint32 tick);
     // calculates state for next tick based on state and input
     PlayerState Tick(const PlayerState& state, const PlayerInput& input);
     // ticks the player, until target Tick is reached
-    void Update(uint64 targetTick ); 
+    void Update(uint32 targetTick );
 
 public:
     // TODO: encapsulate members
     // map container <tick, state>, begin()->oldest, back()->newest
-    std::map<uint64, PlayerState> m_statePredictionHistory;
-    std::map<uint64, PlayerInput> m_inputPredictionHistory;
+    std::map<uint32, PlayerState> m_statePredictionHistory;
+    std::map<uint32, PlayerInput> m_inputPredictionHistory;
     PlayerState m_currentState;
     PlayerInput m_input;
     PlayerInput m_previousInput;

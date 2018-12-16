@@ -10,22 +10,19 @@
 #include <boost/archive/text_oarchive.hpp>
 #include "GameManager.h"
 
-// TODO: Record l_gm.m_timer.GetElapsedTicks() at the beginning of game loop
-
 int main(int argc, char* argv[])
 {
     NetworkLib::Server l_server(8080);
     GameManager l_gm;
-    uint64 l_currentTick = l_gm.m_timer.GetElapsedTicks();
+    l_gm.m_currentTick = 0;
 
     bool isRunning = true;
     while (isRunning)
     {
         // Handle timing
 
-        float32 l_fElapsedTime = l_gm.m_timer.GetDeltaSeconds();
+        // float32 l_fElapsedTime = l_gm.m_timer.GetDeltaSeconds();
         l_gm.m_timer.Restart();
-        
         while (l_server.HasMessages())
         {
             // first part is the client id, second is the message
@@ -64,9 +61,7 @@ int main(int argc, char* argv[])
             }
             case NetworkLib::ClientMessageType::Leave:
             {
-                // Remove the player from player states
                 l_gm.RemovePlayerByEndpoint(l_msg.second);
-
                 l_gm.SendStateToAllClients(l_server);
 
                 break;
@@ -75,21 +70,20 @@ int main(int argc, char* argv[])
             {
                 uint32 l_receivedId;
                 iar >> l_receivedId;
-
+                // timestamp received from client, used to estimate RTT.
                 float32 l_receivedTimestamp;
-                iar >> l_receivedTimestamp; // timestamp received from client, used to estimate RTT.
+                iar >> l_receivedTimestamp; 
 
-                uint64 l_receivedTick;
+                uint32 l_receivedTick;
                 iar >> l_receivedTick;
 
                 PlayerInput l_receivedInput;
                 iar >> l_receivedInput;
                 // the input from player needs to be from the future
-                if (l_receivedTick >= l_currentTick)
+                if (l_receivedTick >= l_gm.m_currentTick)
                 {
-                    const uint32 c_max_input_buffer_capacity = ticks_per_second;
-                    // if input is too far ahead
-                    if (l_receivedTick - l_currentTick < c_max_input_buffer_capacity)
+                    const uint32 c_max_input_buffer_capacity = ticks_per_second * 2;
+                    if (l_receivedTick - l_gm.m_currentTick < c_max_input_buffer_capacity)
                     {
                         // add tick to multimap, including the pair
                         l_gm.m_inputBuffer.emplace(l_receivedTick, 
@@ -97,27 +91,22 @@ int main(int argc, char* argv[])
                     }
                     else
                     {
-                        // the input is too far ahead to consider
-                        /*
                         Log::Debug("Input ignored. Too far ahead: ", l_receivedTick,
-                            " we are at: ", l_currentTick);
-                        */
+                            " we are at: ", l_gm.m_currentTick, 
+                            " difference of: ", l_receivedTick - l_gm.m_currentTick);
+                   
                     }
                 }
                 else
                 {
-                    // the input is too old to consider
                     Log::Debug("Input ignored. behind: ", l_receivedTick,
-                        " we are at: ", l_currentTick);
+                        " we are at: ", l_gm.m_currentTick, 
+                        " difference of: ", l_gm.m_currentTick - l_receivedTick);
+                
                 }
 
-                // if the player is in the game, add his input to the map
-                auto l_ptr = l_gm.m_playerInputs.find(l_receivedId);
-                if (l_gm.m_playerInputs.find(l_receivedId) != l_gm.m_playerInputs.end())
-                {
-                    l_gm.m_playerInputs[l_receivedId] = l_receivedInput;
-                }
-                
+                l_gm.m_clientTimeStamps[l_receivedId] = l_receivedTimestamp;
+
                 break;
             }
             default:
@@ -130,14 +119,14 @@ int main(int argc, char* argv[])
 
         // update client inputs from the input buffers
         // get all input pairs for current tick
-        auto l_range = l_gm.m_inputBuffer.equal_range(l_currentTick);
+        auto l_range = l_gm.m_inputBuffer.equal_range(l_gm.m_currentTick);
         for (auto itr = l_range.first; itr != l_range.second; ++itr)
         {
             // for each pair, set the current input for the current player
             l_gm.m_playerInputs[itr->second.first] = itr->second.second;
         }
         
-        // now that inputs for range of tick have been appliend, remove all
+        // now that inputs for range of tick have been applied, remove all
         // elements with key older then current tick
         l_gm.m_inputBuffer.erase(l_gm.m_inputBuffer.begin(), l_range.second);
 
@@ -148,18 +137,13 @@ int main(int argc, char* argv[])
         }
 
         // Send game state server package to clients 10 times a second        
-        if (l_currentTick >= l_gm.m_lastTickStatesSent + (ticks_per_second / packages_per_second))
+        if (l_gm.m_currentTick >= l_gm.m_lastTickStatesSent + (ticks_per_second / packages_per_second))
         {
             l_gm.SendStateToAllClients(l_server);
-            l_gm.m_lastTickStatesSent = l_currentTick;
-        }
-        // DEBUG: print player positions
-        for (auto itr : l_gm.m_playerStates)
-        {
-            Log::Debug("Player: ", itr.first, itr.second.x, itr.second.y, itr.second.facing);
+            l_gm.m_lastTickStatesSent = l_gm.m_currentTick;
         }
 
-        l_currentTick++;
+        l_gm.m_currentTick++;
         // caps the framerate to number of ticks (default 60)
         l_gm.m_timer.WaitUntilNextTick();
     } //! while

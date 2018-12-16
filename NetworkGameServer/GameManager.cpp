@@ -129,8 +129,8 @@ std::string GameManager::SerializeStatePackage(uint32 id)
     boost::archive::text_oarchive l_archive(oss);
 
     //| MsgType | NumPlayers | ServerTick | LPTimeStamp |
-    l_archive << NetworkLib::ServerMessageType::State << m_numPlayers;
-    l_archive << m_timer.GetElapsedTicks() << m_timer.GetElapsedSeconds();
+    l_archive << NetworkLib::ServerMessageType::State << m_numPlayers
+    << m_currentTick << m_clientTimeStamps[id];
 
     // Add the local player state first
     try
@@ -156,7 +156,6 @@ std::string GameManager::SerializeStatePackage(uint32 id)
                 uint32 l_otherId = itr->first;
                 PlayerState l_otherState = itr->second;
                 l_archive << l_otherId << l_otherState;
-                // Log::Debug("Other: ", l_otherId, l_otherState.x, l_otherState.y ,++l_count);
             }
         }
     }
@@ -179,10 +178,6 @@ std::string GameManager::SerializeAcceptPackage(PlayerState state, uint32 id)
 
     l_archive << NetworkLib::ServerMessageType::Accept;     // MsgType 
     l_archive << id;                                        // ID
-    l_archive << m_timer.GetElapsedTicks();                 // Tick
-    l_archive << state;                                     // State
-
-
     return oss.str();
 }
 
@@ -198,7 +193,6 @@ std::string GameManager::SerializeRejectPackage()
 PlayerState GameManager::Tick(const PlayerState & state, const PlayerInput & input)
 {
     PlayerState l_ret = state;
-    // TODO: Replace l_ret.speed with c_max_speed
     if (input.up)
     {
         l_ret.x += cosf(l_ret.facing) * c_max_speed* seconds_per_tick;
@@ -219,44 +213,6 @@ PlayerState GameManager::Tick(const PlayerState & state, const PlayerInput & inp
     }
 
     return l_ret;
-}
-
-void GameManager::UpdateState(const PlayerInput& input, int playerId, float32 dt)
-{
-    try
-    {
-        auto &l_player = m_playerStates.at(playerId);
-
-        // update player
-        if (input.left) // turn left
-        {
-            l_player.facing += c_turn_speed * dt;
-        }
-        if (input.right) // turn right
-        {
-            l_player.facing -= c_turn_speed * dt;
-        }
-        if (input.up) // forward
-        {
-            l_player.x += cosf(l_player.facing) * c_max_speed * dt;
-            l_player.y += sinf(l_player.facing) * c_max_speed * dt;
-        }
-        if (input.down) // back
-        {
-            l_player.x -= cosf(l_player.facing) * c_max_speed * dt;
-            l_player.y -= sinf(l_player.facing) * c_max_speed * dt;
-        }
-     }
-    catch (const std::out_of_range& eoor)
-    {
-        Log::Debug("Exception, Out of range: No player found with id: "
-                    ,playerId , eoor.what());
-    }
-    catch (const std::exception& e)
-    {
-        Log::Debug("Exception", e.what());
-    }
-
 }
 
 void GameManager::SendStateToAllClients(NetworkLib::Server& server)
