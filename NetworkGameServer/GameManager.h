@@ -19,7 +19,7 @@ public:
     std::map<uint32, uint32_t> m_playerEndpointIds;
     // first->playerId, second->input
     std::map<uint32, PlayerInput> m_playerInputs;
-    // first->playerId, second->inputbuffer(tick, input)
+    // first->tick, second->inputbuffer(playerId, input)
     std::multimap<uint32, std::pair<uint32, PlayerInput>> m_inputBuffer;
     // first->playerId, second->PlayerState
     std::map<uint32, PlayerState> m_playerStates;

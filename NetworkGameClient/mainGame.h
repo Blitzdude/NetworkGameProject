@@ -13,7 +13,6 @@ enum class GameState
     Disconnected,
     Joining,
     Joined,
-    Running
 };
 
 class MainGame : public olc::PixelGameEngine

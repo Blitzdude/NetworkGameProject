@@ -17,7 +17,7 @@ std::pair<uint32, bool> GameManager::AddPlayer(PlayerState state, uint32_t endpo
     }
     else
     {
-        for (unsigned int i = 0; i < m_playerEndpointIds.size() + 1; ++i)
+        for (unsigned int i = 0; i < m_playerEndpointIds.size() + 1; ++i && l_id < m_numPlayers + 1)
         {
             if (m_playerEndpointIds.find(i) == m_playerEndpointIds.end())
             {
@@ -25,7 +25,6 @@ std::pair<uint32, bool> GameManager::AddPlayer(PlayerState state, uint32_t endpo
                 // NOTE: If no id is found before .size(), then the last
                 // .size() + 1 should be the id;
                 l_id = i;
-                break;
             }
         }
         assert(l_id < m_numPlayers + 1);
@@ -115,6 +114,7 @@ void GameManager::RemovePlayerByEndpoint(uint32 endpoint)
         if (endpoint == itr.second)
         {
             l_id = itr.first; // we have found the id
+            break;
         }
     }
     // if l_id is the maximum value, it will not find it from anywere.

@@ -28,6 +28,9 @@
     <ClInclude Include="..\common\Timer.h" />
     <ClInclude Include="GameManager.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="ClassDiagram.cd" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
     <ProjectGuid>{a5a04061-8af1-4168-8535-1bb6b90d2926}</ProjectGuid>

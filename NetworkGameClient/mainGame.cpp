@@ -126,7 +126,9 @@ bool MainGame::OnUserUpdate(float)
                 float32 l_errorSqrd = (dx * dx) + (dy * dy);
                 if (l_errorSqrd > c_maxError)
                 {
+                    /*
                     Log::Debug("Misprediction error of: ", sqrtf(l_errorSqrd), " has occurred at tick: ", l_receivedTick, " Rewinding and replaying");
+                    */
                     // change the value at tick-index (l_insertedState)
                     m_player.m_statePredictionHistory[l_receivedTick] = l_receivedState;
                     // remove all values older then changed tick
@@ -156,8 +158,14 @@ bool MainGame::OnUserUpdate(float)
                 m_player.m_statePredictionHistory.emplace(l_receivedTick, l_receivedState);
             }
 
-                
-            
+            // TODO: Create a way to determine, which player left the game
+            if (l_receivedNumberOfPlayers < m_otherPlayersLastKnownState.size() + 1)
+            {
+                // if the number of players was less then before, clear the containers related to other players
+                Log::Debug("Player left the game");
+                m_otherPlayersLastKnownState.clear();
+                m_otherPlayersCurrentPosition.clear();
+            }
 
             // Get the remaining states for other players
             for (unsigned int i = 1; i < l_receivedNumberOfPlayers; ++i)
@@ -172,7 +180,7 @@ bool MainGame::OnUserUpdate(float)
                 if ( itr != m_otherPlayersLastKnownState.end())
                 {   
                     // id found
-                    m_otherPlayersLastKnownState[l_OtherId] = std::make_pair(l_receivedTick, l_otherState); // tick last seen
+                    m_otherPlayersLastKnownState[l_OtherId] = std::make_pair(l_receivedTick, l_otherState); 
                 }
                 else
                 {
@@ -181,6 +189,7 @@ bool MainGame::OnUserUpdate(float)
                     m_otherPlayersCurrentPosition.emplace(l_OtherId, l_otherState);
                 }
             }
+            // were there less players then before
             break;
         }
         default:
@@ -209,7 +218,6 @@ bool MainGame::OnUserDestroy()
     boost::archive::text_oarchive l_archive(oss);
     if (m_gameState != GameState::Disconnected)
     {
-        // serialize Leave package |msgType|
         m_connection.Send(SerializeLeavePackage());
     }
     return true;

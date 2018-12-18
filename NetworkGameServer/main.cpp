@@ -126,10 +126,14 @@ int main(int argc, char* argv[])
         // update client inputs from the input buffers
         // get all input pairs for current tick
         auto l_range = l_gm.m_inputBuffer.equal_range(l_gm.m_currentTick);
+        // for each pair, set the current input for the current player
         for (auto itr = l_range.first; itr != l_range.second; ++itr)
         {
-            // for each pair, set the current input for the current player
-            l_gm.m_playerInputs[itr->second.first] = itr->second.second;
+            // check if the player is still around
+            if (l_gm.m_playerInputs.count(itr->second.first)) // count is 1 if key found
+            {
+                l_gm.m_playerInputs[itr->second.first] = itr->second.second;
+            }
         }
         
         // now that inputs for range of tick have been applied, remove all

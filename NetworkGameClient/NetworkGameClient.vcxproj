@@ -31,6 +31,9 @@
     <ClInclude Include="olcPixelGameEngine.h" />
     <ClInclude Include="Player.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="ClassDiagram.cd" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
     <ProjectGuid>{dc3bd184-677f-4d90-b5cd-cf11d62c657e}</ProjectGuid>
