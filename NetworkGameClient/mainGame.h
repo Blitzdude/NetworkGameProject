@@ -40,7 +40,6 @@ private:
     void Draw();
     PlayerState LerpPlayerState(const PlayerState& a, const PlayerState& b, float32 t0, float32 t1, float32 t);
     // used to lerp other players ahead
-    uint32 m_deltaLerp = 0;
     std::string SerializeJoinPackage();
     std::string SerializeLeavePackage();
     
@@ -55,11 +54,12 @@ private:
 
     PlayerState m_localPlayerServerState;
 
-    //float32 m_currentTime = 0.0f;
+    uint32 m_deltaLerp = 0;
     uint32 m_currentTicks = 0;
     uint32 m_targetTickNumber = 0;
 
     GameState m_gameState = GameState::Joining;
-
-    bool isRunning = true;
+    
+    bool m_drawDebug = true;
+    bool m_isRunning = true;
 };

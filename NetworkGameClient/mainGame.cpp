@@ -62,7 +62,7 @@ bool MainGame::OnUserUpdate(float)
         {
             Log::Debug("Server full... Join failed");
             m_gameState = GameState::Disconnected;
-            isRunning = false;
+            m_isRunning = false;
             break;
         }
         case NetworkLib::ServerMessageType::State:
@@ -209,7 +209,7 @@ bool MainGame::OnUserUpdate(float)
     Draw();
     m_timer.WaitUntilNextTick();
 
-    return isRunning; // if false -> exits program
+    return m_isRunning; // if false -> exits program
 }
 
 bool MainGame::OnUserDestroy()
@@ -244,6 +244,12 @@ void MainGame::Update()
     if (GetKey(olc::A).bHeld) // turn right
     {
         m_player.m_input.right = true;
+    }
+
+    // Toggle debugDrawing
+    if (GetKey(olc::F).bPressed)
+    {
+        m_drawDebug = m_drawDebug == true ? false : true;
     }
 
     // interpolate the other players states before update, so 
@@ -290,11 +296,14 @@ void MainGame::Draw()
         DrawString(0, ScreenHeight() - 12, fps, olc::WHITE, 1);
 
         // Draw local players server location
-        DrawCircle((int32_t)m_localPlayerServerState.x, (int32_t)m_localPlayerServerState.y, 10, olc::RED);
+        if (m_drawDebug)
+        {
+            DrawCircle((int32_t)m_localPlayerServerState.x, (int32_t)m_localPlayerServerState.y, 10, olc::RED);
 
-        DrawLine(m_localPlayerServerState.x, m_localPlayerServerState.y,
-            m_localPlayerServerState.x + cosf(m_localPlayerServerState.facing) * 10.0f,
-            m_localPlayerServerState.y + sinf(m_localPlayerServerState.facing) * 10.0f, olc::DARK_RED);
+            DrawLine(m_localPlayerServerState.x, m_localPlayerServerState.y,
+                m_localPlayerServerState.x + cosf(m_localPlayerServerState.facing) * 10.0f,
+                m_localPlayerServerState.y + sinf(m_localPlayerServerState.facing) * 10.0f, olc::DARK_RED);
+        }
 
         // draw local players current position
         DrawCircle((int32_t)l_currentPlayerState.x, (int32_t)l_currentPlayerState.y, 10);
@@ -304,13 +313,16 @@ void MainGame::Draw()
             l_currentPlayerState.y + sinf(l_currentPlayerState.facing) * 10.0f, olc::MAGENTA);
 
         // Draw where other players are lerping to
-        for (auto itr : m_otherPlayersLastKnownState)
+        if (m_drawDebug)
         {
-            auto l_state = itr.second.second;
-            DrawCircle(l_state.x, l_state.y, 10, olc::GREEN);
-            DrawLine(l_state.x, l_state.y,
-            l_state.x + cosf(l_state.facing) + cosf(l_state.facing) * 10.0f,
-            l_state.y + sinf(l_state.facing) + sinf(l_state.facing) * 10.0f, olc::DARK_GREEN);
+            for (auto itr : m_otherPlayersLastKnownState)
+            {
+                auto l_state = itr.second.second;
+                DrawCircle(l_state.x, l_state.y, 10, olc::GREEN);
+                DrawLine(l_state.x, l_state.y,
+                l_state.x + cosf(l_state.facing) + cosf(l_state.facing) * 10.0f,
+                l_state.y + sinf(l_state.facing) + sinf(l_state.facing) * 10.0f, olc::DARK_GREEN);
+            }
         }
 
         // Draw other players
