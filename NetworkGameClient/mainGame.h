@@ -48,7 +48,7 @@ private:
     Timer m_timer;
 
     Player m_player;
-    std::map<uint32, PlayerState> m_otherPlayersCurrentPosition;
+    std::map<uint32, PlayerState> m_otherPlayersCurrentState;
     // other player first->slot, second->list(tick, state)
     std::map<uint32, std::pair<uint32,PlayerState>> m_otherPlayersLastKnownState;
 

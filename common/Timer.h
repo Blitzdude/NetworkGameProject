@@ -33,8 +33,8 @@ public:
     uint32 TimeToTick(float32 time);
 
 private:
-    std::chrono::system_clock::time_point startOfTimer;
-    std::chrono::system_clock::time_point startPoint;
+    std::chrono::system_clock::time_point m_startOfTimer;
+    std::chrono::system_clock::time_point m_startPoint;
    
     std::deque<float32> m_deltaTimes;
 };

@@ -4,8 +4,8 @@
 Timer::Timer()
     : m_deltaTimes(10)
 {
-    startOfTimer = std::chrono::system_clock::now();
-    startPoint = std::chrono::system_clock::now();
+    m_startOfTimer = std::chrono::system_clock::now();
+    m_startPoint = std::chrono::system_clock::now();
 }
 
 Timer::~Timer()
@@ -15,13 +15,13 @@ Timer::~Timer()
 // restarts time to the time of creation
 void Timer::Restart()
 {
-    startPoint = std::chrono::system_clock::now();
+    m_startPoint = std::chrono::system_clock::now();
 }
 
 // time from program start in seconds
 float32 Timer::GetElapsedSeconds()
 {
-    std::chrono::duration<float> elapsedTime = std::chrono::system_clock::now() - startOfTimer;
+    std::chrono::duration<float> elapsedTime = std::chrono::system_clock::now() - m_startOfTimer;
     return elapsedTime.count();
 }
 
@@ -29,7 +29,7 @@ float32 Timer::GetDeltaSeconds()
 {
     std::chrono::system_clock::time_point endPoint
         = std::chrono::system_clock::now();
-    std::chrono::duration<float> deltaTime = endPoint - startPoint;
+    std::chrono::duration<float> deltaTime = endPoint - m_startPoint;
     // update deltaTime vector
     m_deltaTimes.push_back(deltaTime.count());
     if (m_deltaTimes.size() > 10)
@@ -64,7 +64,7 @@ float32 Timer::GetFPS()
 // Wait until designated time point
 void Timer::WaitUntilNextTick()
 {   
-     auto endPoint = startPoint + frame_duration{1};
+     auto endPoint = m_startPoint + frame_duration{1};
      std::this_thread::sleep_until(endPoint);
 }
 

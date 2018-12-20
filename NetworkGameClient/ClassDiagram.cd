@@ -1,21 +1,21 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <ClassDiagram MajorVersion="1" MinorVersion="1">
   <Class Name="Timer">
-    <Position X="10.75" Y="2.5" Width="1.5" />
+    <Position X="10.75" Y="2.5" Width="2.25" />
     <TypeIdentifier>
-      <HashCode>EAgAGAAAAAAAAAAAAAAIAAAAAAARCQAAABABAEAEAAA=</HashCode>
+      <HashCode>EAgAEAAAAABAAAAQAAAAAAAAAAARCQAAABABAEAEAAA=</HashCode>
       <FileName>D:\Visual Studio\NetworkGameProject\common\Timer.h</FileName>
     </TypeIdentifier>
   </Class>
   <Class Name="MainGame">
     <Position X="2" Y="3.5" Width="3.25" />
     <TypeIdentifier>
-      <HashCode>AgQAAAAAEAAAAghAAICEAQAgCACAAAAACQABIAAACAQ=</HashCode>
+      <HashCode>AwQAIAAAEAAAAwgAAICEAQAgCACAAAAACAABIAAACAQ=</HashCode>
       <FileName>mainGame.h</FileName>
     </TypeIdentifier>
   </Class>
   <Class Name="Player">
-    <Position X="7.5" Y="3.5" Width="1.5" />
+    <Position X="7.5" Y="3.5" Width="2.5" />
     <TypeIdentifier>
       <HashCode>gEQQAAAAQAAAAAAAAAAAAAAAAAAAAAQQAIgAAQAAQhQ=</HashCode>
       <FileName>Player.h</FileName>
@@ -31,7 +31,7 @@
   <Enum Name="GameState">
     <Position X="8.25" Y="1.25" Width="1.5" />
     <TypeIdentifier>
-      <HashCode>AAAAAAAAAAAACAAAABAAAAAAAAAAAAAIAAAAAgAAAAA=</HashCode>
+      <HashCode>AAAAAAAAAAAACAAAABAAAAAAAAAAAAAAAAAAAgAAAAA=</HashCode>
       <FileName>mainGame.h</FileName>
     </TypeIdentifier>
   </Enum>

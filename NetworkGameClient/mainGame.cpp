@@ -164,7 +164,7 @@ bool MainGame::OnUserUpdate(float)
                 // if the number of players was less then before, clear the containers related to other players
                 Log::Debug("Player left the game");
                 m_otherPlayersLastKnownState.clear();
-                m_otherPlayersCurrentPosition.clear();
+                m_otherPlayersCurrentState.clear();
             }
 
             // Get the remaining states for other players
@@ -186,7 +186,7 @@ bool MainGame::OnUserUpdate(float)
                 {
                     // no player with id yet, add it
                     m_otherPlayersLastKnownState.emplace(l_OtherId, std::make_pair(l_receivedTick, l_otherState));
-                    m_otherPlayersCurrentPosition.emplace(l_OtherId, l_otherState);
+                    m_otherPlayersCurrentState.emplace(l_OtherId, l_otherState);
                 }
             }
             // were there less players then before
@@ -255,7 +255,7 @@ void MainGame::Update()
     // interpolate the other players states before update, so 
     // current tick will be closer
     m_deltaLerp++;
-    for (auto& itr : m_otherPlayersCurrentPosition)
+    for (auto& itr : m_otherPlayersCurrentState)
     {
         float32 t1 = static_cast<float32>(m_otherPlayersLastKnownState.at(itr.first).first);
         
@@ -290,27 +290,27 @@ void MainGame::Draw()
                             + " : " + std::to_string(l_currentPlayerState.y)
                             + " : " + std::to_string(l_currentPlayerState.facing);
 
-        DrawString(0,0, toDraw, olc::WHITE, 1);
+        DrawString(0,0, toDraw, olc::WHITE, 2);
 
         std::string fps = "FPS: : " + std::to_string(m_timer.GetFPS());
-        DrawString(0, ScreenHeight() - 12, fps, olc::WHITE, 1);
+        DrawString(0, ScreenHeight() - 16, fps, olc::WHITE, 2);
 
         // Draw local players server location
         if (m_drawDebug)
         {
-            DrawCircle((int32_t)m_localPlayerServerState.x, (int32_t)m_localPlayerServerState.y, 10, olc::RED);
+            DrawCircle((int32_t)m_localPlayerServerState.x, (int32_t)m_localPlayerServerState.y, 20, olc::RED);
 
             DrawLine(m_localPlayerServerState.x, m_localPlayerServerState.y,
-                m_localPlayerServerState.x + cosf(m_localPlayerServerState.facing) * 10.0f,
-                m_localPlayerServerState.y + sinf(m_localPlayerServerState.facing) * 10.0f, olc::DARK_RED);
+                m_localPlayerServerState.x + cosf(m_localPlayerServerState.facing) * 20.0f,
+                m_localPlayerServerState.y + sinf(m_localPlayerServerState.facing) * 20.0f, olc::DARK_RED);
         }
 
         // draw local players current position
-        DrawCircle((int32_t)l_currentPlayerState.x, (int32_t)l_currentPlayerState.y, 10);
+        DrawCircle((int32_t)l_currentPlayerState.x, (int32_t)l_currentPlayerState.y, 20);
 
         DrawLine(l_currentPlayerState.x, l_currentPlayerState.y,
-            l_currentPlayerState.x + cosf(l_currentPlayerState.facing) * 10.0f,
-            l_currentPlayerState.y + sinf(l_currentPlayerState.facing) * 10.0f, olc::MAGENTA);
+            l_currentPlayerState.x + cosf(l_currentPlayerState.facing) * 20.0f,
+            l_currentPlayerState.y + sinf(l_currentPlayerState.facing) * 20.0f, olc::MAGENTA);
 
         // Draw where other players are lerping to
         if (m_drawDebug)
@@ -318,21 +318,21 @@ void MainGame::Draw()
             for (auto itr : m_otherPlayersLastKnownState)
             {
                 auto l_state = itr.second.second;
-                DrawCircle(l_state.x, l_state.y, 10, olc::GREEN);
+                DrawCircle(l_state.x, l_state.y, 20, olc::GREEN);
                 DrawLine(l_state.x, l_state.y,
-                l_state.x + cosf(l_state.facing) + cosf(l_state.facing) * 10.0f,
-                l_state.y + sinf(l_state.facing) + sinf(l_state.facing) * 10.0f, olc::DARK_GREEN);
+                l_state.x + cosf(l_state.facing) + cosf(l_state.facing) * 20.0f,
+                l_state.y + sinf(l_state.facing) + sinf(l_state.facing) * 20.0f, olc::DARK_GREEN);
             }
         }
 
         // Draw other players
-        for (auto itr : m_otherPlayersCurrentPosition)
+        for (auto itr : m_otherPlayersCurrentState)
         {
             auto l_state = itr.second;
-            DrawCircle(l_state.x, l_state.y, 10, olc::CYAN);
+            DrawCircle(l_state.x, l_state.y, 20, olc::CYAN);
             DrawLine(l_state.x, l_state.y,
-            l_state.x + cosf(l_state.facing) + cosf(l_state.facing) * 10.0f,
-            l_state.y + sinf(l_state.facing) + sinf(l_state.facing) * 10.0f, olc::MAGENTA);
+            l_state.x + cosf(l_state.facing) + cosf(l_state.facing) * 20.0f,
+            l_state.y + sinf(l_state.facing) + sinf(l_state.facing) * 20.0f, olc::MAGENTA);
         }
 
     }
